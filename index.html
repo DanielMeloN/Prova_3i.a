@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroCar - Painel de Redes Neurais</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">NeuroCar Analyzer</span>
+                <span class="sidebar-subtitle">Painel de Redes Neurais</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a class="nav-item active" data-tab="overview">
+                    <i class="fa-solid fa-house nav-icon"></i>
+                    <span>Visão Geral</span>
+                </a>
+                <a class="nav-item" data-tab="eda" id="nav-eda">
+                    <i class="fa-solid fa-chart-line nav-icon"></i>
+                    <span>Exploração & Limpeza</span>
+                </a>
+                <a class="nav-item" data-tab="trainer" id="nav-trainer">
+                    <i class="fa-solid fa-brain nav-icon"></i>
+                    <span>Treinamento de Redes</span>
+                </a>
+                <a class="nav-item" data-tab="predictor" id="nav-predictor">
+                    <i class="fa-solid fa-calculator nav-icon"></i>
+                    <span>Calculadora de Preço</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <span>Versão 1.0.0</span><br>
+                <span>Google DeepMind Pair</span>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- OVERVIEW TAB -->
+            <section class="tab-pane active" id="overview">
+                <div class="section-header">
+                    <h1 class="section-title">Análise de Preços de Carros Usados</h1>
+                    <p class="section-desc">
+                        O NeuroCar carrega automaticamente o dataset e apresenta as informações estatísticas e estruturais da base de dados abaixo. Explore a limpeza dos dados, treine redes neurais multicamadas desenvolvidas do zero e estime o valor de mercado de veículos.
+                    </p>
+                </div>
+
+
+
+                <div class="grid-3" id="stats-container" style="margin-bottom: 24px;">
+                    <div class="stat-widget">
+                        <div class="stat-icon" style="background-color: var(--accent-indigo-glow); color: var(--accent-indigo);">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-total-rows">Carregando...</span>
+                            <span class="stat-label">Registros Carregados</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-widget">
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--accent-emerald);">
+                            <i class="fa-solid fa-filter"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-valid-rows">Carregando...</span>
+                            <span class="stat-label">Registros Válidos (Sem Nulos)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-widget">
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--accent-amber);">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-nulls-dropped">Carregando...</span>
+                            <span class="stat-label">Linhas Nulas Removidas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <!-- Left: Metadata dictionary -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-table-list icon"></i>
+                            <span>Dicionário de Variáveis do Dataset</span>
+                        </div>
+                        <div class="table-wrapper" style="overflow-x: auto;">
+                            <table class="custom-table" style="font-size: 12.5px; border-collapse: collapse; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="padding: 8px;">Variável</th>
+                                        <th style="padding: 8px;">Tipo</th>
+                                        <th style="padding: 8px;">Tratamento & Descrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Brand</strong></td>
+                                        <td><span class="badge badge-primary">Categórico</span></td>
+                                        <td>Marca do veículo (10 marcas). Codificado em ordem alfabética [0-9].</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Model</strong></td>
+                                        <td><span class="badge badge-primary">Categórico</span></td>
+                                        <td>Modelo específico. Descartado devido à baixa correlação linear com preço.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Year</strong></td>
+                                        <td><span class="badge badge-indigo">Numérico</span></td>
+                                        <td>Ano de fabricação. Normalizado. Forte impacto positivo.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Engine_Size</strong></td>
+                                        <td><span class="badge badge-indigo">Numérico</span></td>
+                                        <td>Litragem do motor (1.0 a 6.0). Normalizado. Impacto positivo.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Fuel_Type</strong></td>
+                                        <td><span class="badge badge-primary">Categórico</span></td>
+                                        <td>Tipo de combustível (Gasolina, Diesel, Elétrico, Híbrido). Codificado.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Transmission</strong></td>
+                                        <td><span class="badge badge-primary">Categórico</span></td>
+                                        <td>Câmbio (Manual, Automático, Semiautomático). Codificado.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Mileage</strong></td>
+                                        <td><span class="badge badge-indigo">Numérico</span></td>
+                                        <td>Quilometragem total do veículo. Forte impacto negativo.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Doors / Owners</strong></td>
+                                        <td><span class="badge badge-indigo">Numérico</span></td>
+                                        <td>Quantidade de portas e donos anteriores. Impacto quase nulo.</td>
+                                    </tr>
+                                    <tr style="border-top: 1px solid var(--border-color);">
+                                        <td><strong>Price (Alvo)</strong></td>
+                                        <td><span class="badge badge-emerald">Real/Target</span></td>
+                                        <td>Preço final de venda. Variável predita pelos modelos (Adaline, PMC, TDNN).</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right: Dataset preview summary -->
+                    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div class="card-title">
+                                <i class="fa-solid fa-list-ol icon"></i>
+                                <span>Amostra Rápida da Base (Primeiros 5 Registros)</span>
+                            </div>
+                            <div class="table-wrapper" style="max-height: 240px; margin-bottom: 16px;">
+                                <table class="custom-table" id="overview-preview-table" style="font-size: 11px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Marca</th>
+                                            <th>Ano</th>
+                                            <th>Motor</th>
+                                            <th>Km</th>
+                                            <th>Preço</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Carregando visualização...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div id="dataset-status-box" style="padding: 14px; border-radius: 10px; background-color: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; gap: 12px;">
+                            <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--accent-indigo); font-size: 20px;"></i>
+                            <div>
+                                <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">Carregando Base de Dados</h4>
+                                <p style="font-size: 11px; color: var(--text-secondary);">Buscando o arquivo <code>car_price_dataset.csv</code> automaticamente...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- EDA TAB -->
+            <section class="tab-pane" id="eda">
+                <div class="section-header">
+                    <h1 class="section-title">Exploração e Limpeza de Dados (EDA)</h1>
+                    <p class="section-desc">
+                        Apresentação das etapas de tratamento inicial dos dados, análise de escalas e matriz de correlação das variáveis do dataset.
+                    </p>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-percent icon"></i>
+                            <span>Análise de Nulos e Escalas</span>
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; display: flex; flex-direction: column; gap: 14px;">
+                            <p>
+                                <strong>Tratamento de Nulos:</strong> O notebook analisa a presença de valores ausentes e confirma que <strong>não existem valores nulos dispersos</strong> no dataset original. Portanto, após a limpeza (<code>df.dropna()</code>), a base de dados preserva a integridade de todos os seus <strong>10.000 registros</strong> originais.
+                            </p>
+                            <p>
+                                <strong>Normalização dos Dados:</strong> Como as variáveis numéricas independentes de entrada (Quilometragem e Ano) possuem escalas muito discrepantes, elas foram normalizadas manualmente para o intervalo <code>[0, 1]</code> via Normalização Min-Max linear, dispensando bibliotecas prontas como o scikit-learn. A variável alvo (<code>Price</code>) não é normalizada para viabilizar a predição direta.
+                            </p>
+                            <div style="padding: 12px 16px; border-radius: 8px; background-color: var(--bg-tertiary); border-left: 3px solid var(--accent-cyan); font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); text-align: center;">
+                                Fórmula Min-Max: x_norm = (x - x_min) / (x_max - x_min)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-scissors icon"></i>
+                            <span>Seleção de Variáveis (Correlação)</span>
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; display: flex; flex-direction: column; gap: 14px;">
+                            <p>
+                                Foi calculada a correlação linear de cada variável com o Preço. As colunas <strong>Doors (Portas)</strong>, <strong>Owner_Count (Dono Anterior)</strong> e <strong>Model (Modelo)</strong> apresentaram impacto estatístico praticamente nulo no preço final.
+                            </p>
+                            <p>
+                                Consequentemente, para otimizar os modelos Adaline e PMC (Sigmoide), essas variáveis irrelevantes foram removidas. No entanto, no modelo PMC ReLU avançado, as variáveis de Donos Anteriores e Portas foram reinseridas para testar o comportamento de redes maiores.
+                            </p>
+                            <div style="display: flex; gap: 10px; margin-top: 6px;">
+                                <span class="badge badge-primary">Doors (Dropado)</span>
+                                <span class="badge badge-primary">Owner_Count (Dropado)</span>
+                                <span class="badge badge-primary">Model (Dropado)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Correlation Analysis Section (Added based on Notebook Outputs) -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-title">
+                        <i class="fa-solid fa-chart-line icon"></i>
+                        <span>Análise de Correlações e Impacto das Variáveis (Notebook)</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 13.5px; line-height: 1.6; margin-bottom: 20px;">
+                        Com base nas análises executadas no Jupyter Notebook original, a relação entre as variáveis de entrada e o preço dos veículos foi mapeada matematicamente. Veja abaixo os gráficos extraídos diretamente do notebook e sua respectiva explicação técnica:
+                    </p>
+                    
+                    <div class="grid-2" style="gap: 24px;">
+                        <!-- Column 1: Matriz de Correlação Completa -->
+                        <div style="background-color: var(--bg-tertiary); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+                            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; text-align: center; color: var(--text-primary);">
+                                Matriz de Correlação das Variáveis (Pearson)
+                            </h4>
+                            <img src="images/notebook_image_2.png" alt="Matriz de Correlação Completa" style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; background-color: white;">
+                            <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; align-self: start;">
+                                <p style="margin-bottom: 8px;"><strong>O que significa:</strong></p>
+                                <ul style="padding-left: 16px; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                                    <li>Mede a força de relação linear entre todas as colunas. Varia de <code>-1.00</code> (correlação negativa perfeita) a <code>+1.00</code> (correlação positiva perfeita).</li>
+                                    <li>Permite identificar quais colunas têm forte correlação linear direta com a variável predita (<code>Price</code>).</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Impacto no Preço -->
+                        <div style="background-color: var(--bg-tertiary); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+                            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; text-align: center; color: var(--text-primary);">
+                                Impacto Linear das Variáveis no Preço (Price)
+                            </h4>
+                            <img src="images/notebook_image_3.png" alt="Impacto das Variáveis no Preço" style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; background-color: white;">
+                            <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; align-self: start;">
+                                <p style="margin-bottom: 8px;"><strong>Conclusão Técnica das Correlações:</strong></p>
+                                <ul style="padding-left: 16px; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                                    <li><strong style="color: var(--accent-emerald);">Correlação Positiva:</strong> <code>Year</code> e <code>Engine_Size</code> são os maiores vetores de aumento de preço. Carros mais novos e com motores maiores tendem a ser mais caros.</li>
+                                    <li><strong style="color: var(--accent-rose);">Correlação Negativa:</strong> <code>Mileage</code> indica que quanto maior a quilometragem percorrida, menor o preço final do carro usado.</li>
+                                    <li><strong style="color: var(--accent-amber);">Descarte:</strong> Variáveis como <code>Model</code>, <code>Doors</code> e <code>Owner_Count</code> possuem correlação quase nula, sendo descartadas de alguns modelos simples.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fa-solid fa-table icon"></i>
+                        <span>Visualização da Base Limpa (Primeiras 100 Linhas)</span>
+                    </div>
+                    <div class="table-wrapper" style="max-height: 350px;">
+                        <table class="custom-table" id="raw-data-table">
+                            <thead>
+                                <!-- Carregado dinamicamente -->
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="10" style="text-align: center; color: var(--text-muted);">Carregue o dataset para visualizar a tabela de dados.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- TRAINER TAB -->
+            <section class="tab-pane" id="trainer">
+                <div class="section-header">
+                    <h1 class="section-title">Simulador de Treinamento Neural</h1>
+                    <p class="section-desc">
+                        Ajuste hiperparâmetros, execute o treinamento da rede neuronal e veja o aprendizado acontecer em tempo real na curva de perda (MSE).
+                    </p>
+                </div>
+                
+                <div class="grid-left-wide">
+                    <!-- Training Panel (Left) -->
+                    <div class="card" style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="card-title" style="margin-bottom: 0;">
+                                <i class="fa-solid fa-chart-line icon"></i>
+                                <span>Curva de Aprendizado (MSE por Época)</span>
+                            </div>
+                            <span class="badge badge-emerald" id="training-status">Ocioso</span>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <canvas id="loss-chart" class="canvas-chart"></canvas>
+                        </div>
+                        
+                        <div class="grid-3">
+                            <div class="stat-widget">
+                                <div class="stat-icon" style="background-color: var(--bg-primary); color: var(--accent-indigo);">
+                                    <i class="fa-solid fa-arrows-spin"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="train-current-epoch">0</span>
+                                    <span class="stat-label">Época Atual</span>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-widget">
+                                <div class="stat-icon" style="background-color: var(--bg-primary); color: var(--accent-rose);">
+                                    <i class="fa-solid fa-bolt-lightning"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="train-current-loss">0.000000</span>
+                                    <span class="stat-label">Erro MSE Atual</span>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-widget">
+                                <div class="stat-icon" style="background-color: var(--bg-primary); color: var(--accent-cyan);">
+                                    <i class="fa-solid fa-stopwatch"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="train-current-time">0.00s</span>
+                                    <span class="stat-label">Tempo Decorrido</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px; margin-top: 10px;">
+                            <button class="btn btn-primary" id="btn-start-train" style="flex: 1;">
+                                <i class="fa-solid fa-play"></i> Iniciar Treinamento
+                            </button>
+                            <button class="btn btn-danger" id="btn-stop-train" disabled>
+                                <i class="fa-solid fa-stop"></i> Parar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Settings Panel (Right) -->
+                    <div class="card" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div class="card-title">
+                            <i class="fa-solid fa-sliders icon"></i>
+                            <span>Configurar Hiperparâmetros</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="model-select">Rede Neural / Experimento</label>
+                            <select class="form-control" id="model-select">
+                                <option value="adaline">Adaline (Regra Delta)</option>
+                                <option value="pmc1">PMC 1 (Backpropagation Sigmóide)</option>
+                                <option value="pmc2">PMC 2 (PMC Sigmóide + Momentum)</option>
+                                <option value="tdnn">TDNN (Rede Atraso Temporal - p=5)</option>
+                                <option value="pmc_relu_rasa">PMC ReLU: Rasa (6 &rarr; 5 &rarr; 1)</option>
+                                <option value="pmc_relu_ideal" selected>PMC ReLU: Ideal (6 &rarr; 16 &rarr; 8 &rarr; 1)</option>
+                                <option value="pmc_relu_profunda">PMC ReLU: Profunda (6 &rarr; 64 &rarr; 32 &rarr; 16 &rarr; 1)</option>
+                                <option value="pmc_lotes">PMC Lotes (Lote=32, LR Decay, ReLU)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group" id="group-epochs">
+                            <label class="form-label" for="param-epochs">Épocas de Treinamento <span class="slider-val" id="val-epochs">1500</span></label>
+                            <input type="range" class="form-control" id="param-epochs" min="100" max="5000" step="100" value="1500">
+                        </div>
+                        
+                        <div class="form-group" id="group-lr">
+                            <label class="form-label" for="param-lr">Taxa de Aprendizado (&eta;) <span class="slider-val" id="val-lr">0.001</span></label>
+                            <input type="range" class="form-control" id="param-lr" min="0.0005" max="0.2" step="0.0005" value="0.001">
+                        </div>
+                        
+                        <div class="form-group" id="group-momentum" style="display: none;">
+                            <label class="form-label" for="param-momentum">Fator Momentum (&alpha;) <span class="slider-val" id="val-momentum">0.9</span></label>
+                            <input type="range" class="form-control" id="param-momentum" min="0.1" max="0.99" step="0.05" value="0.9">
+                        </div>
+                        
+                        <div class="form-group" id="group-batch" style="display: none;">
+                            <label class="form-label" for="param-batch">Tamanho do Lote (Batch Size) <span class="slider-val" id="val-batch">32</span></label>
+                            <input type="range" class="form-control" id="param-batch" min="4" max="256" step="4" value="32">
+                        </div>
+                        
+                        <div class="form-group" id="group-delay" style="display: none;">
+                            <label class="form-label" for="param-delay">Atrasos TDNN (Janela p) <span class="slider-val" id="val-delay">5</span></label>
+                            <input type="range" class="form-control" id="param-delay" min="2" max="25" step="1" value="5">
+                        </div>
+                        
+                        <div style="padding: 12px; border-radius: 8px; background-color: var(--bg-primary); border: 1px solid var(--border-color); font-size: 12px;">
+                            <h5 style="margin-bottom: 6px; font-weight: 600; color: var(--accent-indigo);">Descrição do Modelo</h5>
+                            <p id="model-desc-text" style="color: var(--text-secondary); line-height: 1.4;">
+                                Modelo Ideal de Perceptron Multicamadas (PMC) usando a ativação ReLU nas camadas ocultas e Linear na saída. Utiliza normalização Z-score e conjunto de teste randômico (80% treino / 20% teste).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test Performance Predictions -->
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fa-solid fa-list-check icon"></i>
+                        <span>Amostra de Desempenho no Teste (Primeiras 10 Predições em Reais)</span>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                        Tabela demonstrando as predições nos dados de teste desnormalizados (preços reais e preditos do carro), atualizando dinamicamente conforme os pesos convergem.
+                    </p>
+                    <div class="table-wrapper">
+                        <table class="custom-table" id="test-predictions-table">
+                            <thead>
+                                <tr>
+                                    <th>Linha CSV</th>
+                                    <th>Preço Real</th>
+                                    <th>Preço Predito (R$)</th>
+                                    <th>Erro Absoluto (R$)</th>
+                                    <th>Diferença %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-muted);">Treine o modelo selecionado para preencher a tabela de resultados.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Detailed Breakdown & Source Code Card (Bottom of page) -->
+                <div class="card" id="model-details-card" style="margin-top: 24px;">
+                    <div class="card-title">
+                        <i class="fa-solid fa-code icon"></i>
+                        <span>Especificações Detalhadas & Código-Fonte Matemático</span>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                        Esta seção apresenta as regras de regressão, arquitetura do modelo e o trecho real de código em JavaScript executado para atualizar os pesos na época atual.
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; align-items: start;">
+                        <!-- Left: Explanation Column -->
+                        <div style="background-color: var(--bg-tertiary); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 13px; line-height: 1.6;">
+                            <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-graduation-cap"></i> Regras e Conceitos de Treino
+                            </h4>
+                            <div id="model-rules-content" style="display: flex; flex-direction: column; gap: 10px; color: var(--text-secondary);">
+                                <!-- Loaded dynamically -->
+                            </div>
+                        </div>
+                        
+                        <!-- Right: Source Code Snippet Column -->
+                        <div style="background-color: #0b0f19; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 11.5px; overflow-x: auto; color: #a9b2c3;">
+                            <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--accent-emerald); font-family: var(--font-sans); display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-terminal"></i> Trecho do Código de Atualização (app.js)
+                            </h4>
+                            <pre style="margin: 0;"><code id="model-code-content"><!-- Loaded dynamically --></code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- PREDICTOR TAB -->
+            <section class="tab-pane" id="predictor">
+                <div class="section-header">
+                    <h1 class="section-title">Calculadora de Avaliação Veicular</h1>
+                    <p class="section-desc">
+                        Simule a avaliação do valor de mercado de um carro inserindo seus atributos. O cálculo será realizado em tempo real utilizando os pesos obtidos no seu último treinamento!
+                    </p>
+                </div>
+                
+                <div class="grid-right-wide">
+                    <!-- Config Options & Inputs (Left) -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-car-side icon"></i>
+                            <span>Atributos do Veículo</span>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                            <div class="form-group" id="pred-group-brand">
+                                <label class="form-label" for="inp-brand">Marca</label>
+                                <select class="form-control" id="inp-brand">
+                                    <option value="Audi">Audi</option>
+                                    <option value="BMW">BMW</option>
+                                    <option value="Chevrolet">Chevrolet</option>
+                                    <option value="Ford">Ford</option>
+                                    <option value="Honda">Honda</option>
+                                    <option value="Hyundai">Hyundai</option>
+                                    <option value="Kia">Kia</option>
+                                    <option value="Mercedes">Mercedes</option>
+                                    <option value="Toyota">Toyota</option>
+                                    <option value="Volkswagen">Volkswagen</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="pred-group-year">
+                                <label class="form-label" for="inp-year">Ano de Fabricação</label>
+                                <input type="number" class="form-control" id="inp-year" min="1990" max="2024" value="2018">
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                            <div class="form-group" id="pred-group-engine">
+                                <label class="form-label" for="inp-engine">Tamanho do Motor (Litros)</label>
+                                <input type="number" class="form-control" id="inp-engine" min="1.0" max="6.0" step="0.1" value="2.0">
+                            </div>
+                            
+                            <div class="form-group" id="pred-group-fuel">
+                                <label class="form-label" for="inp-fuel">Tipo de Combustível</label>
+                                <select class="form-control" id="inp-fuel">
+                                    <option value="Petrol">Gasolina (Petrol)</option>
+                                    <option value="Diesel">Diesel</option>
+                                    <option value="Electric">Elétrico</option>
+                                    <option value="Hybrid">Híbrido</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                            <div class="form-group" id="pred-group-transmission">
+                                <label class="form-label" for="inp-transmission">Câmbio / Transmissão</label>
+                                <select class="form-control" id="inp-transmission">
+                                    <option value="Automatic">Automático</option>
+                                    <option value="Manual">Manual</option>
+                                    <option value="Semi-Automatic">Semiautomático</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="pred-group-mileage">
+                                <label class="form-label" for="inp-mileage">Quilometragem (km)</label>
+                                <input type="number" class="form-control" id="inp-mileage" min="0" max="500000" value="80000">
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                            <div class="form-group" id="pred-group-doors">
+                                <label class="form-label" for="inp-doors">Número de Portas</label>
+                                <select class="form-control" id="inp-doors">
+                                    <option value="2">2 Portas</option>
+                                    <option value="3">3 Portas</option>
+                                    <option value="4" selected>4 Portas</option>
+                                    <option value="5">5 Portas</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="pred-group-owners">
+                                <label class="form-label" for="inp-owners">Donos Anteriores</label>
+                                <select class="form-control" id="inp-owners">
+                                    <option value="1" selected>Apenas 1 (Único Dono)</option>
+                                    <option value="2">2 Donos</option>
+                                    <option value="3">3 Donos</option>
+                                    <option value="4">4 Donos</option>
+                                    <option value="5">5 ou mais</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="btn-predict-price" style="width: 100%; height: 48px;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Avaliar Veículo
+                        </button>
+                    </div>
+                    
+                    <!-- Prediction View (Right) -->
+                    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                        <div class="predict-result">
+                            <span class="predict-result-title">Valor Estimado do Veículo</span>
+                            
+                            <div class="price-display" id="res-price-value">R$ 0,00</div>
+                            <span class="price-sub" id="res-model-used">Nenhum modelo ativo</span>
+                            
+                            <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: left; font-size: 12px; color: var(--text-secondary);">
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                                    <span>Modelo Utilizado:</span>
+                                    <strong id="res-spec-model" style="color: var(--text-primary);">-</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                                    <span>Precisão de Treino (MSE):</span>
+                                    <strong id="res-spec-mse" style="color: var(--text-primary); font-family: var(--font-mono);">-</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding-bottom: 6px;">
+                                    <span>Características Ativas:</span>
+                                    <strong id="res-spec-features" style="color: var(--text-primary); font-size: 11px;">-</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: 12px; border-radius: 8px; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); line-height: 1.4; display: flex; gap: 8px;">
+                            <i class="fa-solid fa-circle-exclamation" style="font-size: 14px; color: var(--accent-amber);"></i>
+                            <span>Nota: A avaliação é computada instantaneamente pelas redes neurais numpy portadas em JS usando coeficientes ajustados pelo dataset carregado.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="overlay" id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="overlay-text" id="overlay-status">Processando dados, por favor aguarde...</div>
+    </div>
+
+    <!-- Dataset script loaded as JS variable to bypass CORS -->
+    <script src="dataset.js"></script>
+    <!-- App JS logic -->
+    <script src="app.js"></script>
+</body>
+</html>
