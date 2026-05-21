@@ -648,9 +648,36 @@ body {
     color: var(--text-primary);
 }
 
+.grid-5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
 /* Responsive design */
 @media (max-width: 1024px) {
-    .grid-2, .grid-left-wide, .grid-right-wide {
+    .grid-2, .grid-left-wide, .grid-right-wide, .grid-5 {
         grid-template-columns: 1fr;
     }
 }
+
+/* Syntax Highlighting for Code Block */
+.code-comment {
+    color: var(--text-muted);
+    font-style: italic;
+}
+.code-string {
+    color: var(--accent-emerald);
+}
+.code-keyword {
+    color: var(--accent-rose);
+    font-weight: 600;
+}
+.code-number {
+    color: var(--accent-amber);
+}
+.code-function {
+    color: var(--accent-cyan);
+}
+

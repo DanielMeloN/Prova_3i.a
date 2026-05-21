@@ -3,6 +3,7 @@ let rawData = [];
 let cleanedData = [];
 let edaStats = {};
 let activeTrainedModel = null;
+let trainingHistory = [];
 let currentTrainingJob = null;
 let isDatasetLoaded = false;
 
@@ -845,7 +846,7 @@ class TrainingJob {
             const Doors = cleanedData.map(r => r.Doors);
             
             const X_raw = [];
-            for (let i = 0; i < cleanedData.length; i++) {
+            for (let i = 0; i < 1000; i++) {
                 X_raw.push([Year[i], Engine[i], Fuel[i], Mile[i], Owners[i], Doors[i]]);
             }
             
@@ -853,7 +854,7 @@ class TrainingJob {
             const { X_norm, means, stds } = zScoreNormalize(X_raw);
             
             // Normalize Y Price (Z-score)
-            const y_raw = cleanedData.map(r => r.Price);
+            const y_raw = cleanedData.slice(0, 1000).map(r => r.Price);
             
             const sumY = y_raw.reduce((a, b) => a + b, 0);
             this.media_y = sumY / y_raw.length;
@@ -879,33 +880,12 @@ class TrainingJob {
                 fuelEncoding: 'manual'
             };
             
-            // Train/Test Split (Same index permutation seed 42)
-            // Simulating Permutation
-            const len = cleanedData.length;
-            const indices = Array.from({ length: len }, (_, i) => i);
-            
-            // Simple pseudo-random shuffle with fixed seed 42
-            let seed = 42;
-            function random() {
-                let x = Math.sin(seed++) * 10000;
-                return x - Math.floor(x);
-            }
-            for (let i = len - 1; i > 0; i--) {
-                const j = Math.floor(random() * (i + 1));
-                const temp = indices[i];
-                indices[i] = indices[j];
-                indices[j] = temp;
-            }
-            
-            const corte = Math.floor(0.8 * len);
-            this.idx_treino = indices.slice(0, corte);
-            this.idx_teste = indices.slice(corte);
-            
-            this.X_train = this.idx_treino.map(idx => X_norm[idx]);
-            this.y_train = this.idx_treino.map(idx => y_norm[idx]);
-            this.X_test = this.idx_teste.map(idx => X_norm[idx]);
-            this.y_test = this.idx_teste.map(idx => y_norm[idx]);
-            this.test_indices = this.idx_teste.map(idx => cleanedData[idx]._index);
+            // Train/Test Split
+            this.X_train = this.X_all.slice(0, 800);
+            this.y_train = this.y_all.slice(0, 800);
+            this.X_test = this.X_all.slice(800, 1000);
+            this.y_test = this.y_all.slice(800, 1000);
+            this.test_indices = cleanedData.slice(800, 1000).map(r => r._index);
             
         } else if (this.modelType === 'tdnn') {
             // Predict sequence of prices (Cell 15)
@@ -935,12 +915,12 @@ class TrainingJob {
                 preco_max: this.preco_max
             };
             
-            // Train (first 500) and Test (next 200)
-            this.X_train = this.X_all.slice(0, 500);
-            this.y_train = this.y_all.slice(0, 500);
-            this.X_test = this.X_all.slice(500, 700);
-            this.y_test = this.y_all.slice(500, 700);
-            this.test_indices = Array.from({ length: 200 }, (_, j) => 500 + p + j);
+            // Train (first 800) and Test (next 200)
+            this.X_train = this.X_all.slice(0, 800 - p);
+            this.y_train = this.y_all.slice(0, 800 - p);
+            this.X_test = this.X_all.slice(800 - p, 1000 - p);
+            this.y_test = this.y_all.slice(800 - p, 1000 - p);
+            this.test_indices = Array.from({ length: 200 }, (_, j) => 800 + j);
         }
     }
     
@@ -957,11 +937,9 @@ class TrainingJob {
             // Output weights W_saida (size: hidden+1 x 1)
             this.W_saida = Array.from({ length: n_hidden + 1 }, () => [Math.random()]);
             
-            // Momentum matrices
-            if (this.modelType === 'pmc2') {
-                this.delta_W_oculta_ant = Array.from({ length: n_inputs }, () => new Array(n_hidden).fill(0));
-                this.delta_W_saida_ant = Array.from({ length: n_hidden + 1 }, () => [0]);
-            }
+            // Momentum matrices (initialized for all PMC models to prevent TypeError in training step)
+            this.delta_W_oculta_ant = Array.from({ length: n_inputs }, () => new Array(n_hidden).fill(0));
+            this.delta_W_saida_ant = Array.from({ length: n_hidden + 1 }, () => [0]);
         } else if (this.modelType === 'tdnn') {
             const n_hidden = this.hyperparams.hidden || 5;
             this.W_oculta = Array.from({ length: n_inputs }, () => Array.from({ length: n_hidden }, () => Math.random()));
@@ -1322,7 +1300,10 @@ class TrainingJob {
         // Prepare first 10 predictions
         const testPreds = this.predictTestSet();
         
-        this.callback(this.epoch, currentLoss, elapsed, testPreds, done);
+        // Calculate metrics on the entire test set
+        const metrics = this.calculateTestMetrics();
+        
+        this.callback(this.epoch, currentLoss, elapsed, testPreds, metrics, done);
     }
     
     predictTestSet() {
@@ -1408,6 +1389,77 @@ class TrainingJob {
         }
         
         return testPreds;
+    }
+    
+    calculateTestMetrics() {
+        const N = this.X_test.length;
+        if (N === 0) return { accuracy: 0, precision: 0 };
+        
+        let accuracyCount = 0;
+        let sumAbsolutePercentageError = 0;
+        
+        if (this.modelType === 'adaline') {
+            for (let i = 0; i < N; i++) {
+                const xi = this.X_test[i];
+                let u = 0;
+                for (let j = 0; j < xi.length; j++) {
+                    u += this.w[j] * xi[j];
+                }
+                const realPrice = this.y_raw[800 + i];
+                const predPrice = Math.max(0, u * (this.preco_max - this.preco_min) + this.preco_min);
+                const absErrorPct = realPrice === 0 ? 0 : Math.abs(realPrice - predPrice) / realPrice;
+                if (absErrorPct <= 0.10) {
+                    accuracyCount++;
+                }
+                sumAbsolutePercentageError += absErrorPct;
+            }
+        } else if (this.modelType === 'pmc1' || this.modelType === 'pmc2' || this.modelType === 'tdnn') {
+            const n_hidden = this.modelType === 'pmc2' ? 15 : (this.modelType === 'tdnn' ? (this.hyperparams.hidden || 5) : 10);
+            for (let i = 0; i < N; i++) {
+                const x_in = this.X_test[i];
+                const out_oculta = [];
+                for (let h = 0; h < n_hidden; h++) {
+                    let net = 0;
+                    for (let d = 0; d < x_in.length; d++) {
+                        net += x_in[d] * this.W_oculta[d][h];
+                    }
+                    out_oculta.push(logistic(net));
+                }
+                const out_oculta_bias = [-1, ...out_oculta];
+                let net_saida = 0;
+                for (let h = 0; h < out_oculta_bias.length; h++) {
+                    net_saida += out_oculta_bias[h] * this.W_saida[h][0];
+                }
+                const out_saida = logistic(net_saida);
+                
+                const realPrice = this.modelType === 'tdnn' ? this.y_raw[500 + i] : this.y_raw[800 + i];
+                const predPrice = Math.max(0, out_saida * (this.preco_max - this.preco_min) + this.preco_min);
+                const absErrorPct = realPrice === 0 ? 0 : Math.abs(realPrice - predPrice) / realPrice;
+                if (absErrorPct <= 0.10) {
+                    accuracyCount++;
+                }
+                sumAbsolutePercentageError += absErrorPct;
+            }
+        } else if (this.modelType.startsWith('pmc_relu') || this.modelType === 'pmc_lotes') {
+            const ativ = this.forwardMLP(this.X_test);
+            const predictions = ativ[ativ.length - 1];
+            for (let i = 0; i < N; i++) {
+                const norm_pred = predictions[i][0];
+                const realPrice = this.y_raw[this.idx_teste[i]];
+                const predPrice = Math.max(0, (norm_pred * this.desvio_y) + this.media_y);
+                const absErrorPct = realPrice === 0 ? 0 : Math.abs(realPrice - predPrice) / realPrice;
+                if (absErrorPct <= 0.10) {
+                    accuracyCount++;
+                }
+                sumAbsolutePercentageError += absErrorPct;
+            }
+        }
+        
+        const accuracy = (accuracyCount / N) * 100;
+        const MAPE = (sumAbsolutePercentageError / N) * 100;
+        const precision = Math.max(0, 100 - MAPE);
+        
+        return { accuracy, precision };
     }
     
     saveWeights() {
@@ -1518,6 +1570,33 @@ modelSelect.onchange = function() {
     
     updateModelRules(type);
 };
+
+function highlightJS(code) {
+    if (!code) return '';
+    // Escape HTML special characters
+    let escaped = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // RegEx patterns for JS tokens: comments, strings, keywords, numbers, functions
+    const tokenRegex = /(\/\/[^\n]*)|("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|`[^`\\]*(?:\\.[^`\\]*)*`)|(\b(?:const|let|var|for|function|if|else|return|true|false|this|new|class|Math)\b)|(\b\d+(?:\.\d+)?\b)|(\b[a-zA-Z_]\w*(?=\s*\())/g;
+
+    return escaped.replace(tokenRegex, (match, comment, string, keyword, number, func) => {
+        if (comment) {
+            return `<span class="code-comment">${comment}</span>`;
+        } else if (string) {
+            return `<span class="code-string">${string}</span>`;
+        } else if (keyword) {
+            return `<span class="code-keyword">${keyword}</span>`;
+        } else if (number) {
+            return `<span class="code-number">${number}</span>`;
+        } else if (func) {
+            return `<span class="code-function">${func}</span>`;
+        }
+        return match;
+    });
+}
 
 function updateModelRules(type) {
     const rulesContent = document.getElementById('model-rules-content');
@@ -1710,7 +1789,7 @@ for (let start = 0; start < n_samples; start += batch_size) {
 }`;
     }
     rulesContent.innerHTML = html;
-    codeContent.innerText = codeText;
+    codeContent.innerHTML = highlightJS(codeText);
 }
 
 // Start Training click
@@ -1737,14 +1816,22 @@ btnStart.onclick = function() {
     const currentEpochUI = document.getElementById('train-current-epoch');
     const currentLossUI = document.getElementById('train-current-loss');
     const currentTimeUI = document.getElementById('train-current-time');
+    const trainAccuracyUI = document.getElementById('train-accuracy');
+    const trainPrecisionUI = document.getElementById('train-precision');
+    
+    if (trainAccuracyUI) trainAccuracyUI.innerText = '0.00%';
+    if (trainPrecisionUI) trainPrecisionUI.innerText = '0.00%';
     
     let chartHistory = [];
     
-    currentTrainingJob = new TrainingJob(type, hyperparams, (epoch, loss, elapsed, testPreds, done) => {
+    currentTrainingJob = new TrainingJob(type, hyperparams, (epoch, loss, elapsed, testPreds, metrics, done) => {
         // UI updates
         currentEpochUI.innerText = epoch;
         currentLossUI.innerText = loss.toFixed(6);
         currentTimeUI.innerText = `${elapsed}s`;
+        
+        if (trainAccuracyUI && metrics) trainAccuracyUI.innerText = `${metrics.accuracy.toFixed(2)}%`;
+        if (trainPrecisionUI && metrics) trainPrecisionUI.innerText = `${metrics.precision.toFixed(2)}%`;
         
         // Push loss to chart
         chartHistory.push(loss);
@@ -1765,10 +1852,18 @@ btnStart.onclick = function() {
             // Save trained model specs to Predictor Page
             activeTrainedModel = {
                 type: type,
+                name: modelSelect.options[modelSelect.selectedIndex].text,
+                epochs: hyperparams.epochs,
+                lr: hyperparams.lr,
                 mse: loss,
+                accuracy: metrics.accuracy,
+                precision: metrics.precision,
                 norm: activeNormalizationData,
                 weights: activeModelWeights
             };
+            
+            // Add to training history leaderboard
+            addToHistory(activeTrainedModel);
             
             updatePredictorSpecs();
         }
@@ -1829,6 +1924,111 @@ function updateTestTable(preds) {
     tbody.innerHTML = html;
 }
 
+function addToHistory(model) {
+    // Check if a duplicate run already exists
+    const isDuplicate = trainingHistory.some(h => 
+        h.name === model.name && 
+        h.epochs === model.epochs && 
+        h.lr === model.lr && 
+        h.mse === model.mse && 
+        h.accuracy === model.accuracy && 
+        h.precision === model.precision
+    );
+    if (!isDuplicate) {
+        // Deep copy model to avoid referencing changes later
+        const modelCopy = {
+            id: 'model_' + Date.now(),
+            name: model.name,
+            type: model.type,
+            epochs: model.epochs,
+            lr: model.lr,
+            mse: model.mse,
+            accuracy: model.accuracy,
+            precision: model.precision,
+            norm: JSON.parse(JSON.stringify(model.norm)),
+            weights: JSON.parse(JSON.stringify(model.weights))
+        };
+        trainingHistory.push(modelCopy);
+        
+        // Sort history by accuracy (descending), then by precision (descending)
+        trainingHistory.sort((a, b) => {
+            if (b.accuracy !== a.accuracy) {
+                return b.accuracy - a.accuracy;
+            }
+            return b.precision - a.precision;
+        });
+        updateHistoryTable();
+    }
+}
+
+function updateHistoryTable() {
+    const tbody = document.querySelector('#history-models-table tbody');
+    if (!tbody) return;
+    
+    if (trainingHistory.length === 0) {
+        tbody.innerHTML = `<tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum modelo treinado ainda nesta sessão.</td>
+        </tr>`;
+        return;
+    }
+    
+    let html = '';
+    trainingHistory.forEach((h, index) => {
+        const rank = index + 1;
+        let rankBadge = '';
+        if (rank === 1) rankBadge = `<span class="badge badge-emerald" style="font-weight: bold;"><i class="fa-solid fa-trophy"></i> 1º (Melhor)</span>`;
+        else if (rank === 2) rankBadge = `<span class="badge badge-indigo">2º</span>`;
+        else if (rank === 3) rankBadge = `<span class="badge badge-cyan">3º</span>`;
+        else rankBadge = `<span class="badge badge-secondary">${rank}º</span>`;
+        
+        html += `<tr>
+            <td>${rankBadge}</td>
+            <td style="font-weight: 600; color: var(--text-primary);">${h.name}</td>
+            <td>${h.epochs}</td>
+            <td>${parseFloat(h.lr).toFixed(4)}</td>
+            <td style="font-family: var(--font-mono);">${h.mse.toFixed(6)}</td>
+            <td style="color: var(--accent-emerald); font-weight: 600; font-family: var(--font-mono);">${h.accuracy.toFixed(2)}%</td>
+            <td style="color: var(--accent-amber); font-weight: 600; font-family: var(--font-mono);">${h.precision.toFixed(2)}%</td>
+            <td style="text-align: center;">
+                <button class="btn btn-secondary" onclick="loadModelFromHistory('${h.id}')" style="font-size: 11px; padding: 4px 8px; border-radius: 4px;">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Usar na Calculadora
+                </button>
+            </td>
+        </tr>`;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+window.loadModelFromHistory = function(modelId) {
+    const model = trainingHistory.find(h => h.id === modelId);
+    if (!model) return;
+    
+    activeTrainedModel = {
+        type: model.type,
+        mse: model.mse,
+        accuracy: model.accuracy,
+        precision: model.precision,
+        norm: model.norm,
+        weights: model.weights
+    };
+    
+    const modelSelect = document.getElementById('model-select');
+    if (modelSelect) {
+        modelSelect.value = model.type;
+        modelSelect.onchange();
+    }
+    
+    updatePredictorSpecs();
+    
+    alert(`Modelo "${model.name}" carregado com sucesso na Calculadora de Avaliação!`);
+    
+    const navPredictor = document.getElementById('nav-predictor');
+    if (navPredictor) {
+        navPredictor.click();
+    }
+};
+
 // -------------------------------------------------------------
 // PREDICTOR CALCULATION & INTERACTION
 // -------------------------------------------------------------
@@ -1836,12 +2036,16 @@ function updatePredictorSpecs() {
     const resModel = document.getElementById('res-model-used');
     const specModel = document.getElementById('res-spec-model');
     const specMse = document.getElementById('res-spec-mse');
+    const specAccuracy = document.getElementById('res-spec-accuracy');
+    const specPrecision = document.getElementById('res-spec-precision');
     const specFeatures = document.getElementById('res-spec-features');
     
     if (!activeTrainedModel) {
         resModel.innerText = 'Nenhum modelo ativo';
         specModel.innerText = '-';
         specMse.innerText = '-';
+        specAccuracy.innerText = '-';
+        specPrecision.innerText = '-';
         specFeatures.innerText = '-';
         return;
     }
@@ -1851,6 +2055,8 @@ function updatePredictorSpecs() {
     let modelName = modelSelect.options[modelSelect.selectedIndex].text;
     specModel.innerText = modelName;
     specMse.innerText = activeTrainedModel.mse.toFixed(6);
+    specAccuracy.innerText = activeTrainedModel.accuracy !== undefined ? `${activeTrainedModel.accuracy.toFixed(2)}%` : '-';
+    specPrecision.innerText = activeTrainedModel.precision !== undefined ? `${activeTrainedModel.precision.toFixed(2)}%` : '-';
     specFeatures.innerText = activeTrainedModel.norm.features.join(', ');
     
     // Dynamic Form Field Visibility
@@ -2042,3 +2248,14 @@ function animatePriceOutput(target) {
 
 // Run initial change trigger to configure UI and load rules on startup
 modelSelect.onchange();
+
+// Clear history button handler
+const btnClearHistory = document.getElementById('btn-clear-history');
+if (btnClearHistory) {
+    btnClearHistory.onclick = function() {
+        if (confirm('Deseja realmente limpar todo o histórico de treinamento desta sessão?')) {
+            trainingHistory = [];
+            updateHistoryTable();
+        }
+    };
+}

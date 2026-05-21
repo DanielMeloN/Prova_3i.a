@@ -332,7 +332,7 @@
                             <canvas id="loss-chart" class="canvas-chart"></canvas>
                         </div>
                         
-                        <div class="grid-3">
+                        <div class="grid-5">
                             <div class="stat-widget">
                                 <div class="stat-icon" style="background-color: var(--bg-primary); color: var(--accent-indigo);">
                                     <i class="fa-solid fa-arrows-spin"></i>
@@ -350,6 +350,26 @@
                                 <div class="stat-info">
                                     <span class="stat-value" id="train-current-loss">0.000000</span>
                                     <span class="stat-label">Erro MSE Atual</span>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-widget">
+                                <div class="stat-icon" style="background-color: var(--bg-primary); color: var(--accent-emerald);">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="train-accuracy">0.00%</span>
+                                    <span class="stat-label">Acurácia (Tol. 10%)</span>
+                                </div>
+                            </div>
+                            
+                            <div class="stat-widget">
+                                <div class="stat-icon" style="background-color: var(--bg-primary); color: var(--accent-amber);">
+                                    <i class="fa-solid fa-bullseye"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="train-precision">0.00%</span>
+                                    <span class="stat-label">Precisão (1-MAPE)</span>
                                 </div>
                             </div>
                             
@@ -452,6 +472,43 @@
                             <tbody>
                                 <tr>
                                     <td colspan="5" style="text-align: center; color: var(--text-muted);">Treine o modelo selecionado para preencher a tabela de resultados.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Histórico e Comparação de Modelos Treinados -->
+                <div class="card" style="margin-top: 24px;">
+                    <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div>
+                            <i class="fa-solid fa-ranking-star icon"></i>
+                            <span>Histórico e Comparação de Modelos Treinados (Rank do Melhor para o Pior)</span>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-clear-history" style="font-size: 11px; padding: 4px 8px; border-radius: 4px;">
+                            <i class="fa-solid fa-trash-can"></i> Limpar Histórico
+                        </button>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                        Esta tabela armazena o histórico dos seus experimentos de treinamento nesta sessão, ordenados automaticamente da maior para a menor Acurácia de teste.
+                    </p>
+                    <div class="table-wrapper">
+                        <table class="custom-table" id="history-models-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Modelo</th>
+                                    <th>Épocas</th>
+                                    <th>Taxa de Aprendizado</th>
+                                    <th>Erro de Treino (MSE)</th>
+                                    <th>Acurácia de Teste (Tol. 10%)</th>
+                                    <th>Precisão de Teste (1-MAPE)</th>
+                                    <th style="text-align: center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum modelo treinado ainda nesta sessão.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -605,8 +662,16 @@
                                     <strong id="res-spec-model" style="color: var(--text-primary);">-</strong>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
-                                    <span>Precisão de Treino (MSE):</span>
+                                    <span>Erro de Treino (MSE):</span>
                                     <strong id="res-spec-mse" style="color: var(--text-primary); font-family: var(--font-mono);">-</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                                    <span>Acurácia de Teste (Tol. 10%):</span>
+                                    <strong id="res-spec-accuracy" style="color: var(--text-primary); font-family: var(--font-mono);">-</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                                    <span>Precisão de Teste (1-MAPE):</span>
+                                    <strong id="res-spec-precision" style="color: var(--text-primary); font-family: var(--font-mono);">-</strong>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; padding-bottom: 6px;">
                                     <span>Características Ativas:</span>
