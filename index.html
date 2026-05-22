@@ -27,9 +27,13 @@
                     <i class="fa-solid fa-chart-line nav-icon"></i>
                     <span>Exploração & Limpeza</span>
                 </a>
-                <a class="nav-item" data-tab="trainer" id="nav-trainer">
-                    <i class="fa-solid fa-brain nav-icon"></i>
-                    <span>Treinamento de Redes</span>
+                <a class="nav-item" data-tab="modelos" id="nav-modelos">
+                    <i class="fa-solid fa-sitemap nav-icon"></i>
+                    <span>Modelos</span>
+                </a>
+                <a class="nav-item" data-tab="mlp-lote" id="nav-mlp-lote">
+                    <i class="fa-solid fa-award nav-icon"></i>
+                    <span>Melhor Modelo (MLP Lote)</span>
                 </a>
                 <a class="nav-item" data-tab="predictor" id="nav-predictor">
                     <i class="fa-solid fa-calculator nav-icon"></i>
@@ -547,105 +551,445 @@
                 </div>
             </section>
             
+            <!-- MLP LOTE TAB -->
+            <section class="tab-pane" id="mlp-lote">
+                <div class="section-header">
+                    <h1 class="section-title">O Melhor Modelo: MLP Otimizado em Lotes (Mini-batch)</h1>
+                    <p class="section-desc">
+                        Apresentação detalhada da arquitetura neural que alcançou o desempenho máximo nas simulações do Jupyter Notebook. Entenda o funcionamento do algoritmo, as técnicas matemáticas aplicadas e compare os resultados dos experimentos.
+                    </p>
+                </div>
+
+                <div class="grid-2">
+                    <!-- O que é o MLP Lote -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-graduation-cap icon"></i>
+                            <span>O que é o MLP em Lotes (Mini-batch)?</span>
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; display: flex; flex-direction: column; gap: 14px;">
+                            <p>
+                                O **Multi-Layer Perceptron (MLP) treinado em Lotes (Mini-batch Gradient Descent)** é uma rede neural artificial feedforward otimizada. Ao contrário do gradiente descendente padrão (que atualiza os pesos apenas após ver toda a base de dados) ou do estocástico (que atualiza após cada linha individual), o modelo em lotes processa amostras de dados em pequenos grupos de tamanho fixo ($B = 32$).
+                            </p>
+                            <p>
+                                Essa abordagem combina a eficiência computacional de operações matriciais em bloco com a estabilidade de convergência, evitando oscilações excessivas no ajuste dos pesos sinápticos e acelerando consideravelmente o tempo total de treinamento.
+                            </p>
+                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                <span class="badge badge-primary">Mini-batch size = 32</span>
+                                <span class="badge badge-indigo">ReLU nas Ocultas</span>
+                                <span class="badge badge-cyan">Linear na Saída</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Funcionamento e Otimizações -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-gears icon"></i>
+                            <span>Mecanismo de Funcionamento e Otimizações</span>
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; display: flex; flex-direction: column; gap: 14px;">
+                            <p>
+                                Para atingir estabilidade em taxas de aprendizado mais elevadas e convergir para o mínimo global de perda (MSE), o modelo incorpora três otimizações matemáticas cruciais no cálculo de pesos:
+                            </p>
+                            <ul style="padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+                                <li>
+                                    <strong>Fator Momentum ($\alpha = 0.9$):</strong> Acumula uma fração da atualização de pesos anterior. Funciona como uma "força física" que ajuda o gradiente a passar por mínimos locais e platôs planos sem perder velocidade.
+                                </li>
+                                <li>
+                                    <strong>Decaimento da Taxa de Aprendizado (Learning Rate Decay):</strong> A taxa de aprendizado inicial ($\eta_0 = 0.001$) é reduzida gradualmente a cada época ($Decay = 1 \times 10^{-4}$), refinando os passos finais para que a rede encontre valores ótimos de pesos e não sofra oscilações no final do treinamento.
+                                </li>
+                                <li>
+                                    <strong>Função de Ativação ReLU (Rectified Linear Unit):</strong> Aplicada nas camadas ocultas ($f(x) = \max(0, x)$), resolvendo o problema do desaparecimento de gradiente e acelerando o cálculo das derivadas na retropropagação do erro.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagrama da Topologia Ótima [9, 15, 1] -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-title">
+                        <i class="fa-solid fa-diagram-project icon"></i>
+                        <span>Arquitetura da Rede Ótima (Topologia [9, 15, 1])</span>
+                    </div>
+                    <p style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px;">
+                        A melhor configuração de MLP Lote utiliza uma topologia contendo **9 neurônios de entrada** (Set C), **1 camada oculta com 15 neurônios** (ativação ReLU) e **1 neurônio de saída** (ativação Linear para a regressão direta do preço do carro). Veja abaixo o mapeamento visual dos fluxos:
+                    </p>
+                    
+                    <div class="network-viz-container">
+                        <!-- Coluna Entradas (9 nós) -->
+                        <div class="net-layer inputs-layer">
+                            <h5 class="layer-title">Camada de Entrada (Set C)</h5>
+                            <div class="net-nodes">
+                                <div class="net-node-wrapper"><div class="net-node label-primary">Marca</div><span class="node-sub">Categorizada [0-9]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-primary">Modelo</div><span class="node-sub">Categorizada [0-24]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-indigo">Ano</div><span class="node-sub">Normalizado [0, 1]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-indigo">Motor</div><span class="node-sub">Normalizado [0, 1]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-primary">Combustível</div><span class="node-sub">Categorizada [0-3]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-primary">Câmbio</div><span class="node-sub">Categorizada [0-2]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-indigo">Km</div><span class="node-sub">Normalizado [0, 1]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-indigo">Portas</div><span class="node-sub">Normalizado [0, 1]</span></div>
+                                <div class="net-node-wrapper"><div class="net-node label-indigo">Donos</div><span class="node-sub">Normalizado [0, 1]</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Conexões Simbólicas -->
+                        <div class="net-bridge">
+                            <div class="pulse-line"></div>
+                            <div class="pulse-line"></div>
+                            <div class="pulse-line"></div>
+                        </div>
+
+                        <!-- Coluna Oculta (15 nós, resumidos visualmente) -->
+                        <div class="net-layer hidden-layer">
+                            <h5 class="layer-title">Camada Oculta (ReLU)</h5>
+                            <div class="net-nodes hidden-nodes-grid">
+                                <div class="net-node hidden-node text-glow">H1</div>
+                                <div class="net-node hidden-node text-glow">H2</div>
+                                <div class="net-node hidden-node text-glow">H3</div>
+                                <div class="net-node hidden-node text-glow">H4</div>
+                                <div class="net-node hidden-node text-glow">H5</div>
+                                <div class="net-node hidden-node text-glow">H6</div>
+                                <div class="net-node hidden-node text-glow">H7</div>
+                                <div class="net-node hidden-node text-glow">H8</div>
+                                <div class="net-node hidden-node text-glow">H9</div>
+                                <div class="net-node hidden-node text-glow">H10</div>
+                                <div class="net-node hidden-node text-glow">H11</div>
+                                <div class="net-node hidden-node text-glow">H12</div>
+                                <div class="net-node hidden-node text-glow">H13</div>
+                                <div class="net-node hidden-node text-glow">H14</div>
+                                <div class="net-node hidden-node text-glow">H15</div>
+                            </div>
+                            <span style="font-size: 11px; color: var(--text-muted); margin-top: 10px; text-align: center; display: block; font-weight: 500;">
+                                15 neurônios processados em paralelo com ativação ReLU
+                            </span>
+                        </div>
+
+                        <!-- Conexões Simbólicas -->
+                        <div class="net-bridge">
+                            <div class="pulse-line"></div>
+                            <div class="pulse-line"></div>
+                        </div>
+
+                        <!-- Coluna Saída (1 nó) -->
+                        <div class="net-layer output-layer">
+                            <h5 class="layer-title">Camada de Saída</h5>
+                            <div class="net-nodes">
+                                <div class="net-node-wrapper">
+                                    <div class="net-node label-emerald output-node text-glow">R$ Preço</div>
+                                    <span class="node-sub">Linear (Desnormalizado)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultados e Leaderboard Geral -->
+                <div class="grid-left-wide">
+                    <!-- Leaderboard Completo -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-table-list icon"></i>
+                            <span>Leaderboard Geral - Resultados do Notebook `mlp_lote.ipynb`</span>
+                        </div>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                            Comparação de todas as 11 configurações testadas em treino (800 primeiras linhas do dataset) e teste (200 seguintes). Os modelos estão ordenados automaticamente pelo nível de Acurácia de teste (erros &le; 10% do valor real).
+                        </p>
+                        
+                        <div class="table-wrapper">
+                            <table class="custom-table" style="font-size: 12px;">
+                                <thead>
+                                    <tr>
+                                        <th style="padding: 10px 12px; width: 60px;">Rank</th>
+                                        <th style="padding: 10px 12px;">Modelo</th>
+                                        <th style="padding: 10px 12px; text-align: center;">Épocas</th>
+                                        <th style="padding: 10px 12px; text-align: center;">Camadas Ocultas</th>
+                                        <th style="padding: 10px 12px; text-align: center;">Neurônios</th>
+                                        <th style="padding: 10px 12px; text-align: center;">Acurácia (%)</th>
+                                        <th style="padding: 10px 12px; text-align: center;">Precisão (%)</th>
+                                        <th style="padding: 10px 12px; text-align: right;">EQM (Real)</th>
+                                        <th style="padding: 10px 12px; text-align: center;">Treino (s)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="background-color: rgba(16, 185, 129, 0.05); font-weight: 500;">
+                                        <td style="padding: 10px 12px; text-align: center;"><span style="display: inline-block; padding: 2px 6px; background-color: var(--accent-amber); color: #000; border-radius: 4px; font-weight: bold; font-size: 10px;">1º</span></td>
+                                        <td style="padding: 10px 12px;"><span style="color: var(--accent-emerald); font-weight: bold;">★</span> MLP Lotes Set C (Base)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1 camada</td>
+                                        <td style="padding: 10px 12px; text-align: center;">15</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-emerald">100.00%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">99.68%</td>
+                                        <td style="padding: 10px 12px; text-align: right; color: var(--accent-emerald); font-weight: 600;">$ 912.81</td>
+                                        <td style="padding: 10px 12px; text-align: center;">18.77s</td>
+                                    </tr>
+                                    <tr style="background-color: rgba(16, 185, 129, 0.02);">
+                                        <td style="padding: 10px 12px; text-align: center;"><span style="display: inline-block; padding: 2px 6px; background-color: #cbd5e1; color: #000; border-radius: 4px; font-weight: bold; font-size: 10px;">2º</span></td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set B (Base)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1 camada</td>
+                                        <td style="padding: 10px 12px; text-align: center;">15</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-emerald">99.50%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">99.69%</td>
+                                        <td style="padding: 10px 12px; text-align: right; color: var(--accent-emerald); font-weight: 600;">$ 885.09</td>
+                                        <td style="padding: 10px 12px; text-align: center;">14.64s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;"><span style="display: inline-block; padding: 2px 6px; background-color: #b45309; color: #fff; border-radius: 4px; font-weight: bold; font-size: 10px;">3º</span></td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set B (Média)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">2 camadas</td>
+                                        <td style="padding: 10px 12px; text-align: center;">16, 8</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-emerald">99.50%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">99.43%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 4,065.73</td>
+                                        <td style="padding: 10px 12px; text-align: center;">24.35s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">4º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set C (Média)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">2 camadas</td>
+                                        <td style="padding: 10px 12px; text-align: center;">16, 8</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-emerald">99.50%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">98.95%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 12,280.48</td>
+                                        <td style="padding: 10px 12px; text-align: center;">26.06s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">5º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set B (Profunda)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">3 camadas</td>
+                                        <td style="padding: 10px 12px; text-align: center;">32, 16, 8</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-cyan">95.50%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">96.21%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 188,038.53</td>
+                                        <td style="padding: 10px 12px; text-align: center;">38.89s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">6º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set C (Rasa)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1 camada</td>
+                                        <td style="padding: 10px 12px; text-align: center;">5</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-cyan">89.00%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">95.49%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 179,159.05</td>
+                                        <td style="padding: 10px 12px; text-align: center;">17.74s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">7º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set C (Profunda)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">3 camadas</td>
+                                        <td style="padding: 10px 12px; text-align: center;">32, 16, 8</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-cyan">81.00%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">93.68%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 402,090.63</td>
+                                        <td style="padding: 10px 12px; text-align: center;">34.82s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">8º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set B (Rasa)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1 camada</td>
+                                        <td style="padding: 10px 12px; text-align: center;">5</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-amber">77.00%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">92.73%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 436,030.67</td>
+                                        <td style="padding: 10px 12px; text-align: center;">12.75s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">9º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set A (Rasa)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1 camada</td>
+                                        <td style="padding: 10px 12px; text-align: center;">5</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-rose">73.50%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">91.66%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 529,840.65</td>
+                                        <td style="padding: 10px 12px; text-align: center;">13.41s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">10º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set A (Base)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1 camada</td>
+                                        <td style="padding: 10px 12px; text-align: center;">15</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-rose">72.00%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">91.66%</td>
+                                        <td style="padding: 10px 12px; text-align: right; font-weight: 600;">$ 571,876.24</td>
+                                        <td style="padding: 10px 12px; text-align: center;">13.73s</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 12px; text-align: center;">11º</td>
+                                        <td style="padding: 10px 12px;">MLP Lotes Set A (Média)</td>
+                                        <td style="padding: 10px 12px; text-align: center;">1500</td>
+                                        <td style="padding: 10px 12px; text-align: center;">2 camadas</td>
+                                        <td style="padding: 10px 12px; text-align: center;">16, 8</td>
+                                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-rose">70.00%</span></td>
+                                        <td style="padding: 10px 12px; text-align: center;">91.37%</td>
+                                        <td style="padding: 10px 12px; text-align: right;">$ 671,099.95</td>
+                                        <td style="padding: 10px 12px; text-align: center;">21.70s</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Curvas de Aprendizado e Detalhes dos Atributos -->
+                    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; gap: 20px;">
+                        <div>
+                            <div class="card-title">
+                                <i class="fa-solid fa-chart-line icon"></i>
+                                <span>Curvas de Aprendizado do Notebook</span>
+                            </div>
+                            <div style="background-color: var(--bg-tertiary); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; margin-bottom: 16px;">
+                                <img src="images/mlp_lote_curves.png" alt="Curva de Aprendizado - MLP Lotes" style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background-color: white;">
+                            </div>
+                            <div style="font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 10px;">
+                                <p><strong>Principais Conclusões das Curvas:</strong></p>
+                                <ul style="padding-left: 18px; display: flex; flex-direction: column; gap: 6px;">
+                                    <li>
+                                        <strong style="color: var(--accent-rose);">Conjunto A (Sem Marca/Modelo):</strong> Limite de aprendizado estagnou em ~73%. A ausência das variáveis de Marca e Modelo impediu a convergência de precisão, pois o preço é intrinsecamente dependente do prestígio da fabricante.
+                                    </li>
+                                    <li>
+                                        <strong style="color: var(--accent-amber);">Conjunto B (Com Marca):</strong> A inclusão da Marca (Label Encoded) disparou a acurácia de teste para **99.50%**, validando que a fabricante possui alto poder de determinação no mercado automotivo.
+                                    </li>
+                                    <li>
+                                        <strong style="color: var(--accent-emerald);">Conjunto C (Marca e Modelo):</strong> Ao combinarmos as duas variáveis categóricas de maior peso, a rede MLP Lotes base (`[9, 15, 1]`) convergiu perfeitamente com **100.00% de Acurácia** e **99.68% de Precisão**, reduzindo o MSE para níveis mínimos.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- PREDICTOR TAB -->
             <section class="tab-pane" id="predictor">
                 <div class="section-header">
                     <h1 class="section-title">Calculadora de Avaliação Veicular</h1>
                     <p class="section-desc">
-                        Simule a avaliação do valor de mercado de um carro inserindo seus atributos. O cálculo será realizado em tempo real utilizando os pesos obtidos no seu último treinamento!
+                        Simule a avaliação do valor de mercado de um carro inserindo seus atributos ou selecionando um registro real da base de dados. O cálculo é realizado em tempo real utilizando o modelo MLP Lotes (Conjunto B), o mais preciso para simulações veiculares!
                     </p>
                 </div>
                 
                 <div class="grid-right-wide">
                     <!-- Config Options & Inputs (Left) -->
-                    <div class="card">
-                        <div class="card-title">
-                            <i class="fa-solid fa-car-side icon"></i>
-                            <span>Atributos do Veículo</span>
-                        </div>
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-                            <div class="form-group" id="pred-group-brand">
-                                <label class="form-label" for="inp-brand">Marca</label>
-                                <select class="form-control" id="inp-brand">
-                                    <option value="Audi">Audi</option>
-                                    <option value="BMW">BMW</option>
-                                    <option value="Chevrolet">Chevrolet</option>
-                                    <option value="Ford">Ford</option>
-                                    <option value="Honda">Honda</option>
-                                    <option value="Hyundai">Hyundai</option>
-                                    <option value="Kia">Kia</option>
-                                    <option value="Mercedes">Mercedes</option>
-                                    <option value="Toyota">Toyota</option>
-                                    <option value="Volkswagen">Volkswagen</option>
-                                </select>
+                        <!-- Seletor de Linha do Dataset -->
+                        <div class="card" id="dataset-selector-card">
+                            <div class="card-title">
+                                <i class="fa-solid fa-database icon"></i>
+                                <span>Selecionar Registro do Dataset</span>
+                            </div>
+                            <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4;">
+                                Escolha uma linha do dataset entre <strong>1000</strong> e <strong>10000</strong> (dados de validação não vistos pelo modelo) para carregar os atributos na calculadora e confrontar a predição.
+                            </p>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <input type="number" class="form-control" id="inp-dataset-row" min="1000" max="10000" placeholder="Linha (1000 - 10000)" style="height: 42px;">
+                                </div>
+                                <button class="btn btn-primary" id="btn-load-dataset-row" style="height: 42px; padding: 0 16px; white-space: nowrap; font-size: 13.5px; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Carregar e Comparar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Card de Atributos -->
+                        <div class="card">
+                            <div class="card-title">
+                                <i class="fa-solid fa-car-side icon"></i>
+                                <span>Atributos do Veículo</span>
                             </div>
                             
-                            <div class="form-group" id="pred-group-year">
-                                <label class="form-label" for="inp-year">Ano de Fabricação</label>
-                                <input type="number" class="form-control" id="inp-year" min="1990" max="2024" value="2018">
-                            </div>
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-                            <div class="form-group" id="pred-group-engine">
-                                <label class="form-label" for="inp-engine">Tamanho do Motor (Litros)</label>
-                                <input type="number" class="form-control" id="inp-engine" min="1.0" max="6.0" step="0.1" value="2.0">
-                            </div>
-                            
-                            <div class="form-group" id="pred-group-fuel">
-                                <label class="form-label" for="inp-fuel">Tipo de Combustível</label>
-                                <select class="form-control" id="inp-fuel">
-                                    <option value="Petrol">Gasolina (Petrol)</option>
-                                    <option value="Diesel">Diesel</option>
-                                    <option value="Electric">Elétrico</option>
-                                    <option value="Hybrid">Híbrido</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-                            <div class="form-group" id="pred-group-transmission">
-                                <label class="form-label" for="inp-transmission">Câmbio / Transmissão</label>
-                                <select class="form-control" id="inp-transmission">
-                                    <option value="Automatic">Automático</option>
-                                    <option value="Manual">Manual</option>
-                                    <option value="Semi-Automatic">Semiautomático</option>
-                                </select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group" id="pred-group-brand">
+                                    <label class="form-label" for="inp-brand">Marca</label>
+                                    <select class="form-control" id="inp-brand">
+                                        <option value="Audi">Audi</option>
+                                        <option value="BMW">BMW</option>
+                                        <option value="Chevrolet">Chevrolet</option>
+                                        <option value="Ford">Ford</option>
+                                        <option value="Honda">Honda</option>
+                                        <option value="Hyundai">Hyundai</option>
+                                        <option value="Kia">Kia</option>
+                                        <option value="Mercedes">Mercedes</option>
+                                        <option value="Toyota">Toyota</option>
+                                        <option value="Volkswagen">Volkswagen</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" id="pred-group-year">
+                                    <label class="form-label" for="inp-year">Ano de Fabricação</label>
+                                    <input type="number" class="form-control" id="inp-year" min="1990" max="2024" value="2018">
+                                </div>
                             </div>
                             
-                            <div class="form-group" id="pred-group-mileage">
-                                <label class="form-label" for="inp-mileage">Quilometragem (km)</label>
-                                <input type="number" class="form-control" id="inp-mileage" min="0" max="500000" value="80000">
-                            </div>
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
-                            <div class="form-group" id="pred-group-doors">
-                                <label class="form-label" for="inp-doors">Número de Portas</label>
-                                <select class="form-control" id="inp-doors">
-                                    <option value="2">2 Portas</option>
-                                    <option value="3">3 Portas</option>
-                                    <option value="4" selected>4 Portas</option>
-                                    <option value="5">5 Portas</option>
-                                </select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group" id="pred-group-engine">
+                                    <label class="form-label" for="inp-engine">Tamanho do Motor (Litros)</label>
+                                    <input type="number" class="form-control" id="inp-engine" min="1.0" max="6.0" step="0.1" value="2.0">
+                                </div>
+                                
+                                <div class="form-group" id="pred-group-fuel">
+                                    <label class="form-label" for="inp-fuel">Tipo de Combustível</label>
+                                    <select class="form-control" id="inp-fuel">
+                                        <option value="Petrol">Gasolina (Petrol)</option>
+                                        <option value="Diesel">Diesel</option>
+                                        <option value="Electric">Elétrico</option>
+                                        <option value="Hybrid">Híbrido</option>
+                                    </select>
+                                </div>
                             </div>
                             
-                            <div class="form-group" id="pred-group-owners">
-                                <label class="form-label" for="inp-owners">Donos Anteriores</label>
-                                <select class="form-control" id="inp-owners">
-                                    <option value="1" selected>Apenas 1 (Único Dono)</option>
-                                    <option value="2">2 Donos</option>
-                                    <option value="3">3 Donos</option>
-                                    <option value="4">4 Donos</option>
-                                    <option value="5">5 ou mais</option>
-                                </select>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                <div class="form-group" id="pred-group-transmission">
+                                    <label class="form-label" for="inp-transmission">Câmbio / Transmissão</label>
+                                    <select class="form-control" id="inp-transmission">
+                                        <option value="Automatic">Automático</option>
+                                        <option value="Manual">Manual</option>
+                                        <option value="Semi-Automatic">Semiautomático</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" id="pred-group-mileage">
+                                    <label class="form-label" for="inp-mileage">Quilometragem (km)</label>
+                                    <input type="number" class="form-control" id="inp-mileage" min="0" max="500000" value="80000">
+                                </div>
                             </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                                <div class="form-group" id="pred-group-doors">
+                                    <label class="form-label" for="inp-doors">Número de Portas</label>
+                                    <select class="form-control" id="inp-doors">
+                                        <option value="2">2 Portas</option>
+                                        <option value="3">3 Portas</option>
+                                        <option value="4" selected>4 Portas</option>
+                                        <option value="5">5 Portas</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" id="pred-group-owners">
+                                    <label class="form-label" for="inp-owners">Donos Anteriores</label>
+                                    <select class="form-control" id="inp-owners">
+                                        <option value="1" selected>Apenas 1 (Único Dono)</option>
+                                        <option value="2">2 Donos</option>
+                                        <option value="3">3 Donos</option>
+                                        <option value="4">4 Donos</option>
+                                        <option value="5">5 ou mais</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-primary" id="btn-predict-price" style="width: 100%; height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Avaliar Veículo Manualmente
+                            </button>
                         </div>
-                        
-                        <button class="btn btn-primary" id="btn-predict-price" style="width: 100%; height: 48px;">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Avaliar Veículo
-                        </button>
                     </div>
                     
                     <!-- Prediction View (Right) -->
@@ -654,9 +998,9 @@
                             <span class="predict-result-title">Valor Estimado do Veículo</span>
                             
                             <div class="price-display" id="res-price-value">R$ 0,00</div>
-                            <span class="price-sub" id="res-model-used">Nenhum modelo ativo</span>
+                            <span class="price-sub" id="res-model-used">Modelo MLP Lotes Inativo</span>
                             
-                            <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: left; font-size: 12px; color: var(--text-secondary);">
+                            <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: left; font-size: 12px; color: var(--text-secondary);">
                                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
                                     <span>Modelo Utilizado:</span>
                                     <strong id="res-spec-model" style="color: var(--text-primary);">-</strong>
@@ -678,16 +1022,249 @@
                                     <strong id="res-spec-features" style="color: var(--text-primary); font-size: 11px;">-</strong>
                                 </div>
                             </div>
+                            
+                            <!-- Painel de Comparação -->
+                            <div id="comparison-panel" style="display: none; margin-top: 24px; padding: 18px; border-radius: 12px; background-color: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.2); animation: fadeIn 0.4s ease-out;">
+                                <div style="font-size: 13.5px; font-weight: 600; color: var(--accent-indigo); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-scale-balanced"></i> Comparação com o Dataset (Linha <span id="comp-row-num">-</span>)
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                                    <div style="background-color: var(--bg-tertiary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Preço no Dataset</div>
+                                        <div id="comp-real-price" style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">R$ 0,00</div>
+                                    </div>
+                                    <div style="background-color: var(--bg-tertiary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Preço Estimado</div>
+                                        <div id="comp-pred-price" style="font-size: 16px; font-weight: 700; color: var(--accent-indigo); margin-top: 4px;">R$ 0,00</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-secondary);">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 4px;">
+                                        <span>Erro Absoluto:</span>
+                                        <strong id="comp-error-abs" style="color: var(--text-primary);">-</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 4px;">
+                                        <span>Diferença Percentual:</span>
+                                        <strong id="comp-error-pct" style="color: var(--text-primary);">-</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                                        <span>Tolerância de Acerto (10%):</span>
+                                        <span id="comp-tolerance-badge" class="badge">-</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div style="padding: 12px; border-radius: 8px; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); line-height: 1.4; display: flex; gap: 8px;">
+                        <div style="padding: 12px; border-radius: 8px; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); line-height: 1.4; display: flex; gap: 8px; margin-top: 20px;">
                             <i class="fa-solid fa-circle-exclamation" style="font-size: 14px; color: var(--accent-amber);"></i>
-                            <span>Nota: A avaliação é computada instantaneamente pelas redes neurais numpy portadas em JS usando coeficientes ajustados pelo dataset carregado.</span>
+                            <span>Nota: A avaliação é computada instantaneamente pelas redes neurais numpy portadas em JS usando os coeficientes refinados do modelo MLP Lotes.</span>
                         </div>
                     </div>
                 </div>
             </section>
-            
+
+            <!-- MODELOS TAB -->
+            <section class="tab-pane" id="modelos">
+                <div class="section-header">
+                    <h1 class="section-title">Modelos de Redes Neurais</h1>
+                    <p class="section-desc">
+                        Visão geral e detalhada do funcionamento, arquiteturas, regras de aprendizado e parâmetros dos modelos de redes neurais desenvolvidos neste trabalho.
+                    </p>
+                </div>
+
+                <!-- CONFIGURAÇÕES GERAIS -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-title">
+                        <i class="fa-solid fa-gears icon"></i>
+                        <span>Configurações Gerais</span>
+                    </div>
+                    <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                        <p style="margin-bottom: 12px;">
+                            Todos os modelos presentes no projeto seguem diretrizes fundamentais de divisão e validação de dados para garantir comparações científicas justas e transparentes:
+                        </p>
+                        <div class="grid-3" style="margin-top: 16px; gap: 16px;">
+                            <div style="background-color: var(--bg-tertiary); padding: 16px; border-radius: 10px; border: 1px solid var(--border-color);">
+                                <h4 style="font-size: 13px; font-weight: 600; color: var(--accent-indigo); margin-bottom: 8px;">
+                                    <i class="fa-solid fa-arrows-split-up-and-left"></i> Divisão dos Dados
+                                </h4>
+                                <p style="font-size: 12px; color: var(--text-secondary);">
+                                    O conjunto de dados total é particionado de forma sequencial estruturada: as primeiras <strong>800 amostras</strong> são reservadas para o treino e as <strong>200 amostras seguintes</strong> (linhas 801 a 1000) são utilizadas para teste.
+                                </p>
+                            </div>
+                            <div style="background-color: var(--bg-tertiary); padding: 16px; border-radius: 10px; border: 1px solid var(--border-color);">
+                                <h4 style="font-size: 13px; font-weight: 600; color: var(--accent-emerald); margin-bottom: 8px;">
+                                    <i class="fa-solid fa-calculator"></i> Métricas de Erro
+                                </h4>
+                                <p style="font-size: 12px; color: var(--text-secondary);">
+                                    Avaliação pelo Erro Quadrático Médio (<strong>MSE</strong>) de convergência, Acurácia de validação com <strong>tolerância de 10%</strong> sobre o preço alvo e a Precisão calculada a partir de <strong>1 - MAPE</strong> (Erro Percentual Absoluto Médio).
+                                </p>
+                            </div>
+                            <div style="background-color: var(--bg-tertiary); padding: 16px; border-radius: 10px; border: 1px solid var(--border-color);">
+                                <h4 style="font-size: 13px; font-weight: 600; color: var(--accent-cyan); margin-bottom: 8px;">
+                                    <i class="fa-solid fa-scale-balanced"></i> Normalização de Dados
+                                </h4>
+                                <p style="font-size: 12px; color: var(--text-secondary);">
+                                    As variáveis numéricas são normalizadas linearmente via <strong>Min-Max</strong> no intervalo <code>[0, 1]</code> (para Adaline, PMC e TDNN) ou padronizadas via <strong>Z-Score</strong> (média zero e desvio padrão unitário para os modelos avançados de ReLU e Lotes).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRID DE MODELOS -->
+                <div class="grid-2">
+                    <!-- MODELO 1: ADALINE -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-chart-line icon"></i>
+                            <span>1. Adaline (Regra Delta)</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
+                            <p>
+                                <strong>Descrição:</strong> Rede neural linear de camada única. A saída é dada pelo somatório ponderado das entradas somado ao viés, sem passar por funções não-lineares.
+                            </p>
+                            <p>
+                                <strong>Arquitetura:</strong> 6 entradas + 1 bias &rarr; 1 saída linear.
+                            </p>
+                            <p>
+                                <strong>Regra de Aprendizado:</strong> Gradiente Descendente Estocástico (Regra Delta ou Regra de Widrow-Hoff), que atualiza os pesos de forma contínua a cada registro com o objetivo de minimizar a soma dos erros quadrados (LMS).
+                            </p>
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                <span class="badge badge-primary">Linear</span>
+                                <span class="badge badge-indigo">Regra Delta</span>
+                                <span class="badge badge-cyan">Min-Max</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODELO 2: PMC 1 -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-network-wired icon"></i>
+                            <span>2. PMC 1 (Backpropagation Sigmóide)</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
+                            <p>
+                                <strong>Descrição:</strong> Perceptron Multicamadas (Multi-Layer Perceptron) básico com uma camada oculta. Permite aproximar relações não-lineares nos dados.
+                            </p>
+                            <p>
+                                <strong>Arquitetura:</strong> 6 entradas (Set A) &rarr; 10 neurônios ocultos &rarr; 1 saída.
+                            </p>
+                            <p>
+                                <strong>Função de Ativação:</strong> Sigmóide Logística nas ocultas (mapeando para o intervalo <code>(0, 1)</code>) e Linear na camada de saída.
+                            </p>
+                            <p>
+                                <strong>Aprendizado:</strong> Algoritmo de retropropagação do erro (Backpropagation) padrão, ajustando os pesos na direção oposta ao gradiente local de erro.
+                            </p>
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                <span class="badge badge-primary">Sigmóide</span>
+                                <span class="badge badge-indigo">Backpropagation</span>
+                                <span class="badge badge-cyan">Min-Max</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODELO 3: PMC 2 -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-network-wired icon"></i>
+                            <span>3. PMC 2 (Sigmóide + Momentum)</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
+                            <p>
+                                <strong>Descrição:</strong> Versão refinada da PMC 1. Expande o número de conexões e adiciona aceleração de gradiente para melhorar a estabilidade e velocidade.
+                            </p>
+                            <p>
+                                <strong>Arquitetura:</strong> 6 entradas (Set A) &rarr; 15 neurônios ocultos &rarr; 1 saída.
+                            </p>
+                            <p>
+                                <strong>Fator Momentum (&alpha; = 0.9):</strong> Uma técnica que acelera o gradiente descendente ao adicionar uma fração da correção de pesos anterior ao cálculo atual. Funciona como uma força de inércia, ajudando a rede a ultrapassar vales e mínimos locais.
+                            </p>
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                <span class="badge badge-primary">Sigmóide</span>
+                                <span class="badge badge-indigo">Momentum (0.9)</span>
+                                <span class="badge badge-cyan">Min-Max</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODELO 4: TDNN -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-clock icon"></i>
+                            <span>4. TDNN (Rede de Atraso Temporal)</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
+                            <p>
+                                <strong>Descrição:</strong> Time Delay Neural Network. Diferente dos demais, trata a predição como uma série temporal pura, prevendo o preço do veículo com base no histórico de preços anteriores.
+                            </p>
+                            <p>
+                                <strong>Parâmetro de Janela (p = 5):</strong> Utiliza uma janela deslizante contendo os últimos 5 preços registrados na série histórica de vendas para estimar o preço atual do veículo.
+                            </p>
+                            <p>
+                                <strong>Arquitetura:</strong> 5 entradas temporais (atrasos) &rarr; 5 neurônios ocultos (Sigmóide) &rarr; 1 saída linear.
+                            </p>
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                <span class="badge badge-primary">Série Temporal</span>
+                                <span class="badge badge-indigo">Janela p = 5</span>
+                                <span class="badge badge-cyan">Min-Max</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODELO 5: PMC ReLU -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-layer-group icon"></i>
+                            <span>5. PMC ReLU (Rasa, Ideal e Profunda)</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
+                            <p>
+                                <strong>Descrição:</strong> Modelos multicamadas que substituem a ativação Sigmóide pela função <strong>ReLU (Rectified Linear Unit)</strong>: <code>f(x) = max(0, x)</code> nas camadas ocultas.
+                            </p>
+                            <p>
+                                <strong>Otimização:</strong> A ReLU resolve o problema do desvanecimento de gradientes em redes mais profundas, tornando o treinamento muito mais rápido e estável.
+                            </p>
+                            <p>
+                                <strong>Variações de Topologia:</strong>
+                                <br>&bull; <em>Rasa:</em> 1 camada oculta: <code>[6 &rarr; 5 &rarr; 1]</code>
+                                <br>&bull; <em>Ideal:</em> 2 camadas ocultas: <code>[6 &rarr; 16 &rarr; 8 &rarr; 1]</code>
+                                <br>&bull; <em>Profunda:</em> 3 camadas ocultas: <code>[6 &rarr; 64 &rarr; 32 &rarr; 16 &rarr; 1]</code>
+                            </p>
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                <span class="badge badge-primary">ReLU</span>
+                                <span class="badge badge-indigo">Multi-Camadas</span>
+                                <span class="badge badge-cyan">Z-Score</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MODELO 6: MLP LOTES -->
+                    <div class="card">
+                        <div class="card-title">
+                            <i class="fa-solid fa-award icon"></i>
+                            <span>6. MLP Lotes (Mini-batch)</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 8px;">
+                            <p>
+                                <strong>Descrição:</strong> O modelo campeão de precisão. Combina processamento matricial em lotes (Mini-batch Gradient Descent) com decaimento da taxa de aprendizado e Momentum.
+                            </p>
+                            <p>
+                                <strong>Tamanho do Lote (Lote = 32):</strong> Atualiza pesos após ver 32 amostras do dataset, em vez de após cada linha. Isso diminui o ruído no ajuste e acelera consideravelmente o treinamento.
+                            </p>
+                            <p>
+                                <strong>Decaimento (LR Decay = 1e-4):</strong> A taxa de aprendizado inicial (&eta;<sub>0</sub> = 0.001) decai progressivamente a cada época de treino, refinando os ajustes finais e garantindo convergência estável.
+                            </p>
+                            <div style="display: flex; gap: 6px; margin-top: 4px;">
+                                <span class="badge badge-primary">Mini-batch (32)</span>
+                                <span class="badge badge-indigo">Decay & Momentum</span>
+                                <span class="badge badge-cyan">Z-Score</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 

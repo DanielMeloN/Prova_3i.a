@@ -6,6 +6,7 @@ let activeTrainedModel = null;
 let trainingHistory = [];
 let currentTrainingJob = null;
 let isDatasetLoaded = false;
+let mlpLoteTrainedModel = null;
 
 // Color helper
 const colors = {
@@ -35,6 +36,12 @@ const manualFuelMapping = {
     'Hybrid': 3
 };
 
+const manualTransmissionMapping = {
+    'Manual': 0,
+    'Automatic': 1,
+    'Semi-Automatic': 2
+};
+
 // Standard normal distribution generator (Box-Muller transform)
 function randn() {
     let u = 0, v = 0;
@@ -48,7 +55,8 @@ function randn() {
 // -------------------------------------------------------------
 document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
-        if (!isDatasetLoaded && item.id !== 'nav-overview' && item.getAttribute('data-tab') !== 'overview') {
+        const tabId = item.getAttribute('data-tab');
+        if (!isDatasetLoaded && item.id !== 'nav-overview' && tabId !== 'overview' && tabId !== 'mlp-lote' && tabId !== 'modelos') {
             alert('Por favor, carregue o arquivo car_price_dataset.csv primeiro!');
             return;
         }
@@ -57,7 +65,6 @@ document.querySelectorAll('.nav-item').forEach(item => {
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
         
         item.classList.add('active');
-        const tabId = item.getAttribute('data-tab');
         document.getElementById(tabId).classList.add('active');
         
         // Re-render canvases if switching to EDA or Trainer
@@ -228,10 +235,58 @@ function loadDataFromText(text) {
         const fallbackCard = document.getElementById('cors-fallback-card');
         if (fallbackCard) fallbackCard.style.display = 'none';
         
+        // Train MLP Lote silently for the vehicle price calculator
+        trainMLPLotesSilently();
+        
     } catch (error) {
         console.error('Erro no processamento da base:', error);
         alert('Ocorreu um erro ao carregar os dados. Verifique a estrutura do CSV.');
     }
+}
+
+function trainMLPLotesSilently() {
+    console.log("Iniciando treinamento silencioso do modelo MLP Lotes...");
+    
+    // Configuration of MLP Lotes (Set B)
+    const hyperparams = {
+        epochs: 1500,
+        lr: 0.005,
+        batchSize: 32,
+        momentum: 0.9
+    };
+    
+    // Instanciate the training job silently
+    const job = new TrainingJob('pmc_lotes', hyperparams, () => {});
+    
+    // Train 1500 epochs synchronously (takes ~150-250ms)
+    for (let i = 0; i < hyperparams.epochs; i++) {
+        job.step();
+    }
+    
+    // Calculate final metrics and weights
+    const metrics = job.calculateTestMetrics();
+    const weights = job.saveWeights();
+    
+    // Save trained model globally for vehicle price calculator
+    mlpLoteTrainedModel = {
+        type: 'pmc_lotes',
+        name: 'MLP Lotes (Conjunto B)',
+        epochs: hyperparams.epochs,
+        lr: hyperparams.lr,
+        mse: job.history[job.history.length - 1],
+        accuracy: metrics.accuracy,
+        precision: metrics.precision,
+        norm: JSON.parse(JSON.stringify(activeNormalizationData)),
+        weights: weights
+    };
+    
+    // Also set activeTrainedModel for backward compatibility / generic page specs
+    activeTrainedModel = mlpLoteTrainedModel;
+    
+    // Update predictor UI specs
+    updatePredictorSpecs();
+    
+    console.log("Treinamento silencioso concluído! Acurácia de teste:", metrics.accuracy.toFixed(2) + "%");
 }
 
 function showOverlay(msg) {
@@ -327,7 +382,11 @@ function getEncodedArray(data, column, encodingType) {
             return brandList.indexOf(val);
         }
         if (column === 'Transmission') {
-            return transmissionList.indexOf(val);
+            if (encodingType === 'manual') {
+                return manualTransmissionMapping[val] !== undefined ? manualTransmissionMapping[val] : 0;
+            } else {
+                return transmissionList.indexOf(val);
+            }
         }
         if (column === 'Fuel_Type') {
             if (encodingType === 'manual') {
@@ -836,8 +895,9 @@ class TrainingJob {
             this.test_indices = cleanedData.slice(800, 1000).map(r => r._index);
             
         } else if (this.modelType.startsWith('pmc_relu') || this.modelType === 'pmc_lotes') {
-            // Features used: Year, Engine_Size, Fuel_Type, Mileage, Owner_Count, Doors
-            // Mappings are: Fuel -> manual map, others raw numerical
+            const isLotes = this.modelType === 'pmc_lotes';
+            
+            // Features used: Brand, Year, Engine_Size, Fuel_Type, Transmission, Mileage, Owner_Count, Doors
             const Year = cleanedData.map(r => r.Year);
             const Engine = cleanedData.map(r => r.Engine_Size);
             const Fuel = getEncodedArray(cleanedData, 'Fuel_Type', 'manual');
@@ -845,9 +905,19 @@ class TrainingJob {
             const Owners = cleanedData.map(r => r.Owner_Count);
             const Doors = cleanedData.map(r => r.Doors);
             
+            let Brand, Trans;
+            if (isLotes) {
+                Brand = getEncodedArray(cleanedData, 'Brand', 'alphabetical');
+                Trans = getEncodedArray(cleanedData, 'Transmission', 'manual');
+            }
+            
             const X_raw = [];
             for (let i = 0; i < 1000; i++) {
-                X_raw.push([Year[i], Engine[i], Fuel[i], Mile[i], Owners[i], Doors[i]]);
+                if (isLotes) {
+                    X_raw.push([Brand[i], Year[i], Engine[i], Fuel[i], Trans[i], Mile[i], Owners[i], Doors[i]]);
+                } else {
+                    X_raw.push([Year[i], Engine[i], Fuel[i], Mile[i], Owners[i], Doors[i]]);
+                }
             }
             
             // Z-Score normalize X
@@ -872,12 +942,15 @@ class TrainingJob {
             
             activeNormalizationData = {
                 type: 'zscore',
-                features: ['Year', 'Engine_Size', 'Fuel_Type', 'Mileage', 'Owner_Count', 'Doors'],
+                features: isLotes 
+                    ? ['Brand', 'Year', 'Engine_Size', 'Fuel_Type', 'Transmission', 'Mileage', 'Owner_Count', 'Doors']
+                    : ['Year', 'Engine_Size', 'Fuel_Type', 'Mileage', 'Owner_Count', 'Doors'],
                 means,
                 stds,
                 media_y: this.media_y,
                 desvio_y: this.desvio_y,
-                fuelEncoding: 'manual'
+                fuelEncoding: 'manual',
+                transmissionEncoding: isLotes ? 'manual' : 'alphabetical'
             };
             
             // Train/Test Split
@@ -886,6 +959,7 @@ class TrainingJob {
             this.X_test = this.X_all.slice(800, 1000);
             this.y_test = this.y_all.slice(800, 1000);
             this.test_indices = cleanedData.slice(800, 1000).map(r => r._index);
+            this.idx_teste = Array.from({ length: 200 }, (_, j) => 800 + j);
             
         } else if (this.modelType === 'tdnn') {
             // Predict sequence of prices (Cell 15)
@@ -951,7 +1025,7 @@ class TrainingJob {
             let topologia = [6, 16, 8, 1];
             if (this.modelType === 'pmc_relu_rasa') topologia = [6, 5, 1];
             if (this.modelType === 'pmc_relu_profunda') topologia = [6, 64, 32, 16, 1];
-            if (this.modelType === 'pmc_lotes') topologia = [6, 16, 8, 1]; // standard lotes is Ideal topology
+            if (this.modelType === 'pmc_lotes') topologia = [8, 15, 1]; // standard lotes is Set B Refined topology
             
             this.topologia = topologia;
             this.pesos = [];
@@ -2040,8 +2114,11 @@ function updatePredictorSpecs() {
     const specPrecision = document.getElementById('res-spec-precision');
     const specFeatures = document.getElementById('res-spec-features');
     
-    if (!activeTrainedModel) {
-        resModel.innerText = 'Nenhum modelo ativo';
+    // The calculator strictly uses the mlpLoteTrainedModel
+    const modelToUse = mlpLoteTrainedModel;
+    
+    if (!modelToUse) {
+        resModel.innerText = 'Modelo MLP Lotes Inativo';
         specModel.innerText = '-';
         specMse.innerText = '-';
         specAccuracy.innerText = '-';
@@ -2050,17 +2127,15 @@ function updatePredictorSpecs() {
         return;
     }
     
-    resModel.innerText = 'Modelo Treinado Pronto';
+    resModel.innerText = 'Modelo MLP Lotes Ativo';
+    specModel.innerText = modelToUse.name;
+    specMse.innerText = modelToUse.mse.toFixed(6);
+    specAccuracy.innerText = modelToUse.accuracy !== undefined ? `${modelToUse.accuracy.toFixed(2)}%` : '-';
+    specPrecision.innerText = modelToUse.precision !== undefined ? `${modelToUse.precision.toFixed(2)}%` : '-';
+    specFeatures.innerText = modelToUse.norm.features.join(', ');
     
-    let modelName = modelSelect.options[modelSelect.selectedIndex].text;
-    specModel.innerText = modelName;
-    specMse.innerText = activeTrainedModel.mse.toFixed(6);
-    specAccuracy.innerText = activeTrainedModel.accuracy !== undefined ? `${activeTrainedModel.accuracy.toFixed(2)}%` : '-';
-    specPrecision.innerText = activeTrainedModel.precision !== undefined ? `${activeTrainedModel.precision.toFixed(2)}%` : '-';
-    specFeatures.innerText = activeTrainedModel.norm.features.join(', ');
-    
-    // Dynamic Form Field Visibility
-    const activeFeatures = activeTrainedModel.norm.features;
+    // Dynamic Form Field Visibility (always active since MLP Lotes uses all features)
+    const activeFeatures = modelToUse.norm.features;
     
     document.getElementById('pred-group-brand').style.opacity = activeFeatures.includes('Brand') ? '1' : '0.4';
     document.getElementById('pred-group-transmission').style.opacity = activeFeatures.includes('Transmission') ? '1' : '0.4';
@@ -2073,10 +2148,64 @@ function updatePredictorSpecs() {
     document.getElementById('inp-owners').disabled = !activeFeatures.includes('Owner_Count');
 }
 
-// Predict button action
+// Predict using the globally pre-trained MLP Lote (Set B) model
+function predictCarPrice(brand, year, engine, fuel, transmission, mileage, owners, doors) {
+    const norm = mlpLoteTrainedModel.norm;
+    const weights = mlpLoteTrainedModel.weights;
+    
+    // Categorical encodings
+    const brandCode = brandList.indexOf(brand);
+    const fuelCode = manualFuelMapping[fuel] !== undefined ? manualFuelMapping[fuel] : 0;
+    const transCode = manualTransmissionMapping[transmission] !== undefined ? manualTransmissionMapping[transmission] : 0;
+    
+    // Feature vector: [Brand, Year, Engine_Size, Fuel_Type, Transmission, Mileage, Owner_Count, Doors]
+    const raw_vector = [brandCode, year, engine, fuelCode, transCode, mileage, owners, doors];
+    
+    // Z-score normalize
+    const x_norm = [];
+    for (let j = 0; j < raw_vector.length; j++) {
+        x_norm.push((raw_vector[j] - norm.means[j]) / norm.stds[j]);
+    }
+    
+    // Forward MLP with ReLU
+    let current_layer = [x_norm]; // Shape 1 x 8
+    const L = weights.pesos.length;
+    
+    // Hidden Layers
+    for (let l = 0; l < L - 1; l++) {
+        const next_layer = [];
+        const h_size = weights.vieses[l][0].length;
+        const in_size = current_layer[0].length;
+        
+        const row = [];
+        for (let c = 0; c < h_size; c++) {
+            let net = weights.vieses[l][0][c];
+            for (let r = 0; r < in_size; r++) {
+                net += current_layer[0][r] * weights.pesos[l][r][c];
+            }
+            row.push(Math.max(0, net)); // ReLU
+        }
+        next_layer.push(row);
+        current_layer = next_layer;
+    }
+    
+    // Output Layer (Linear)
+    const i_out = L - 1;
+    const in_size = current_layer[0].length;
+    let final_net = weights.vieses[i_out][0][0];
+    for (let r = 0; r < in_size; r++) {
+        final_net += current_layer[0][r] * weights.pesos[i_out][r][0];
+    }
+    
+    // Desnormalize Y
+    const predictedPrice = (final_net * norm.desvio_y) + norm.media_y;
+    return Math.max(0, predictedPrice);
+}
+
+// Predict button action (manual calculation)
 document.getElementById('btn-predict-price').onclick = function() {
-    if (!activeTrainedModel) {
-        alert('Você precisa treinar um modelo de inteligência artificial primeiro na aba "Treinamento de Redes"!');
+    if (!mlpLoteTrainedModel) {
+        alert('O modelo MLP Lotes ainda não foi treinado silenciosamente. Por favor, aguarde o carregamento dos dados.');
         return;
     }
     
@@ -2090,140 +2219,87 @@ document.getElementById('btn-predict-price').onclick = function() {
     const doors = parseFloat(document.getElementById('inp-doors').value);
     const owners = parseFloat(document.getElementById('inp-owners').value);
     
-    const norm = activeTrainedModel.norm;
-    const type = activeTrainedModel.type;
-    const weights = activeTrainedModel.weights;
+    // Predict and animate main output
+    const predictedPrice = predictCarPrice(brand, year, engine, fuel, transmission, mileage, owners, doors);
+    animatePriceOutput(predictedPrice);
     
-    let predictedPrice = 0;
-    
-    if (type === 'adaline' || type === 'pmc1' || type === 'pmc2') {
-        // Encoding alphabetical
-        const brandCode = brandList.indexOf(brand);
-        const fuelCode = fuelList.indexOf(fuel);
-        const transCode = transmissionList.indexOf(transmission);
-        
-        const raw_vector = [brandCode, year, engine, fuelCode, transCode, mileage];
-        
-        // Normalize Min-Max
-        const x_norm = [];
-        for (let j = 0; j < raw_vector.length; j++) {
-            const min = norm.mins[j];
-            const max = norm.maxs[j];
-            x_norm.push(max - min === 0 ? 0 : (raw_vector[j] - min) / (max - min));
-        }
-        
-        // Add bias -1
-        const x_bias = [-1, ...x_norm];
-        
-        if (type === 'adaline') {
-            let u = 0;
-            for (let j = 0; j < x_bias.length; j++) {
-                u += weights.w[j] * x_bias[j];
-            }
-            predictedPrice = u * (norm.preco_max - norm.preco_min) + norm.preco_min;
-        } else {
-            // PMC Sigmoid
-            const n_hidden = type === 'pmc2' ? 15 : 10;
-            const out_oculta = [];
-            for (let h = 0; h < n_hidden; h++) {
-                let net = 0;
-                for (let d = 0; d < x_bias.length; d++) {
-                    net += x_bias[d] * weights.W_oculta[d][h];
-                }
-                out_oculta.push(logistic(net));
-            }
-            
-            const out_oculta_bias = [-1, ...out_oculta];
-            let net_saida = 0;
-            for (let h = 0; h < out_oculta_bias.length; h++) {
-                net_saida += out_oculta_bias[h] * weights.W_saida[h][0];
-            }
-            const out_saida = logistic(net_saida);
-            
-            predictedPrice = out_saida * (norm.preco_max - norm.preco_min) + norm.preco_min;
-        }
-        
-    } else if (type.startsWith('pmc_relu') || type === 'pmc_lotes') {
-        // Encoding manual fuel
-        const fuelCode = manualFuelMapping[fuel];
-        const raw_vector = [year, engine, fuelCode, mileage, owners, doors];
-        
-        // Z-score normalize
-        const x_norm = [];
-        for (let j = 0; j < raw_vector.length; j++) {
-            x_norm.push((raw_vector[j] - norm.means[j]) / norm.stds[j]);
-        }
-        
-        // Forward MLP with ReLU
-        // Let's compute layer by layer
-        let current_layer = [x_norm]; // Shape 1 x n_features
-        const L = weights.pesos.length;
-        
-        // Hidden Layers
-        for (let l = 0; l < L - 1; l++) {
-            const next_layer = [];
-            const h_size = weights.vieses[l][0].length;
-            const in_size = current_layer[0].length;
-            
-            const row = [];
-            for (let c = 0; c < h_size; c++) {
-                let net = weights.vieses[l][0][c];
-                for (let r = 0; r < in_size; r++) {
-                    net += current_layer[0][r] * weights.pesos[l][r][c];
-                }
-                row.push(Math.max(0, net)); // ReLU
-            }
-            next_layer.push(row);
-            current_layer = next_layer;
-        }
-        
-        // Output Layer (Linear)
-        const i_out = L - 1;
-        const in_size = current_layer[0].length;
-        let final_net = weights.vieses[i_out][0][0];
-        for (let r = 0; r < in_size; r++) {
-            final_net += current_layer[0][r] * weights.pesos[i_out][r][0];
-        }
-        
-        // Desnormalize
-        predictedPrice = (final_net * norm.desvio_y) + norm.media_y;
-        
-    } else if (type === 'tdnn') {
-        // TDNN relies on previous sequence, for calculator we estimate a static test case 
-        // with default average price inputs to showcase window.
-        // We will mock it using the average price from the dataset to construct inputs.
-        const p = norm.p;
-        const avgPrice = (norm.preco_max + norm.preco_min) / 2;
-        const mockSequence = new Array(p).fill(avgPrice);
-        
-        // Normalize sequence
-        const x_norm = mockSequence.map(y => (y - norm.preco_min) / (norm.preco_max - norm.preco_min));
-        const x_bias = [-1, ...x_norm];
-        
-        // PMC Forward
-        const n_hidden = weights.W_oculta[0].length;
-        const out_oculta = [];
-        for (let h = 0; h < n_hidden; h++) {
-            let net = 0;
-            for (let d = 0; d < x_bias.length; d++) {
-                net += x_bias[d] * weights.W_oculta[d][h];
-            }
-            out_oculta.push(logistic(net));
-        }
-        const out_oculta_bias = [-1, ...out_oculta];
-        let net_saida = 0;
-        for (let h = 0; h < out_oculta_bias.length; h++) {
-            net_saida += out_oculta_bias[h] * weights.W_saida[h][0];
-        }
-        const out_saida = logistic(net_saida);
-        predictedPrice = out_saida * (norm.preco_max - norm.preco_min) + norm.preco_min;
+    // Hide the comparison panel since this was a manual prediction (not selected from dataset)
+    document.getElementById('comparison-panel').style.display = 'none';
+};
+
+// Load dataset row action (load and compare with actual price)
+document.getElementById('btn-load-dataset-row').onclick = function() {
+    if (!isDatasetLoaded) {
+        alert('Por favor, carregue a base de dados primeiro!');
+        return;
     }
     
-    // Ensure price is not negative
-    predictedPrice = Math.max(0, predictedPrice);
+    if (!mlpLoteTrainedModel) {
+        alert('O modelo MLP Lotes ainda não foi treinado silenciosamente.');
+        return;
+    }
     
-    // Count-up animation for the evaluated price
-    animatePriceOutput(predictedPrice);
+    const rowInput = document.getElementById('inp-dataset-row');
+    const rowNum = parseInt(rowInput.value);
+    
+    if (isNaN(rowNum) || rowNum < 1000 || rowNum > 10000) {
+        alert('Por favor, escolha uma linha válida entre 1000 e 10000.');
+        return;
+    }
+    
+    // Find the row in cleanedData (1-based row number maps to index rowNum - 1)
+    const idx = rowNum - 1;
+    if (idx >= cleanedData.length) {
+        alert(`O dataset carregado possui apenas ${cleanedData.length} registros. Escolha uma linha menor.`);
+        return;
+    }
+    
+    const car = cleanedData[idx];
+    
+    // Fill form fields
+    document.getElementById('inp-brand').value = car.Brand;
+    document.getElementById('inp-year').value = car.Year;
+    document.getElementById('inp-engine').value = car.Engine_Size;
+    document.getElementById('inp-fuel').value = car.Fuel_Type;
+    document.getElementById('inp-transmission').value = car.Transmission;
+    document.getElementById('inp-mileage').value = car.Mileage;
+    document.getElementById('inp-doors').value = car.Doors;
+    document.getElementById('inp-owners').value = car.Owner_Count;
+    
+    // Predict price using mlpLoteTrainedModel
+    const predPrice = predictCarPrice(car.Brand, car.Year, car.Engine_Size, car.Fuel_Type, car.Transmission, car.Mileage, car.Owner_Count, car.Doors);
+    const realPrice = car.Price;
+    
+    // Display main price value with animation
+    animatePriceOutput(predPrice);
+    
+    // Update comparison panel values
+    document.getElementById('comp-row-num').innerText = rowNum;
+    document.getElementById('comp-real-price').innerText = `R$ ${realPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    document.getElementById('comp-pred-price').innerText = `R$ ${predPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    
+    const errAbs = Math.abs(realPrice - predPrice);
+    const errPct = (errAbs / realPrice) * 100;
+    
+    document.getElementById('comp-error-abs').innerText = `R$ ${errAbs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    document.getElementById('comp-error-pct').innerText = `${errPct.toFixed(2)}%`;
+    
+    const badge = document.getElementById('comp-tolerance-badge');
+    if (errPct <= 10.0) {
+        badge.innerText = 'Dentro da Margem (10%)';
+        badge.className = 'badge badge-emerald';
+        badge.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+        badge.style.color = 'var(--accent-emerald)';
+    } else {
+        badge.innerText = 'Fora da Margem';
+        badge.className = 'badge badge-rose';
+        badge.style.backgroundColor = 'rgba(244, 63, 94, 0.15)';
+        badge.style.color = 'var(--accent-rose)';
+    }
+    
+    // Show panel with smooth animation
+    const panel = document.getElementById('comparison-panel');
+    panel.style.display = 'block';
 };
 
 function animatePriceOutput(target) {
